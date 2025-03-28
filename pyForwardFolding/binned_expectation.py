@@ -45,9 +45,6 @@ class BinnedExpectation:
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
-            weight_buffer (np.ndarray): Buffer for weights.
-            weight_sq_buffer (np.ndarray): Buffer for squared weights.
-            component_buffer (np.ndarray): Buffer for intermediate computations.
             input_variables (Dict[str, Union[np.ndarray, float]]): A collection of input variables.
             exposed_variables (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
 
