@@ -16,7 +16,7 @@ dependencies = []
 description = "Your project description here."
 dynamic = ["version"]
 license = "MIT"
-name = "template-python"
+name = "pyForwardFolding"
 readme = "README.md"
 requires-python = ">=3.10,<4"
 
@@ -24,6 +24,7 @@ requires-python = ">=3.10,<4"
 checks = [
   "mypy==1.9.0",
   "ruff>=0.3,<0.4",
+  "jax>=0.5"
 ]
 docs = [
   "mkdocs-material>=9,<10",
@@ -42,13 +43,13 @@ show_missing = true
 
 [tool.coverage.run]
 command_line = "-m pytest"
-source = ["template_python", "tests"]
+source = ["pyForwardFolding", "tests"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/template_python"]
+include = ["/pyForwardFolding"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["template_python"]
+packages = ["pyForwardFolding"]
 
 [tool.hatch.envs.ci]
 dev-mode = false
@@ -100,7 +101,7 @@ minversion = "6.0"
 testpaths = ["tests"]
 
 [tool.ruff]
-src = ["template_python", "tests"]
+src = ["pyForwardFolding", "tests"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -109,4 +110,4 @@ docstring-code-format = true
 extend-select = ["I"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["template_python", "tests"]
+known-first-party = ["pyForwardFolding", "tests"]
