@@ -6,13 +6,13 @@ from .backend import backend
 
 class Analysis:
     """
-    Represents a complete analysis consisting of multiple binned components.
+    Represents a complete analysis consisting of multiple binned expectations.
 
     Args:
-        components (Dict[str, BinnedExpectation]): Dictionary mapping component names to their implementations.
+        expectations (Dict[str, BinnedExpectation]): Dictionary mapping expectation names to their objects.
     """
-    def __init__(self, components: Dict[str, BinnedExpectation]):
-        self.components = components
+    def __init__(self, expectations: Dict[str, BinnedExpectation]):
+        self.expectations = expectations
 
     def required_variables(self) -> set:
         """
@@ -21,17 +21,17 @@ class Analysis:
         Returns:
             set: A set containing all required variables.
         """
-        return set.union(*(comp.required_variables() for comp in self.components.values()))
+        return set.union(*(comp.required_variables() for comp in self.expectations.values()))
 
     def exposed_variables(self) -> Dict[str, Any]:
         """
-        Get all variables exposed by the analysis components.
+        Get all variables exposed by the analysis expectations.
 
         Returns:
-            Dict[str, Any]: A merged dictionary of all exposed variables from all components.
+            Dict[str, Any]: A merged dictionary of all exposed variables from all expectations.
         """
         exposed = {}
-        for comp in self.components.values():
+        for comp in self.expectations.values():
             exposed.update(comp.exposed_variables())
         return exposed
 
@@ -41,11 +41,11 @@ class Analysis:
         exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
-        Evaluate all components in the analysis using the provided BufferManager.
+        Evaluate all expectations in the analysis using the provided BufferManager.
 
         Args:
             datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): A dictionary mapping component names to their input variables.
-            exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated components.
+            exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated expectations.
 
         Returns:
             Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]: A tuple containing:
@@ -55,7 +55,7 @@ class Analysis:
         output_dict = {}
         output_ssq_dict = {}
 
-        for comp_name, comp in self.components.items():
+        for comp_name, comp in self.expectations.items():
             # Get input variables for the component
             input_vars = datasets.get(comp_name)
             if input_vars is None:
