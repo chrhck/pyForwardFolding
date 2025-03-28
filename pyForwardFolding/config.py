@@ -37,7 +37,7 @@ def analysis_from_config(path: str) -> Analysis:
     components_name_mapping = {c.name: c for c in components}
 
     model_conf = conf["model"]
-    model = Model(
+    model = Model.from_pairs(
         model_conf["name"],
         [
             (c["baseline_weight"], components_name_mapping[c["name"]])

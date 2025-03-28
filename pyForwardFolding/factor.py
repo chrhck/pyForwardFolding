@@ -81,34 +81,6 @@ def get_exposed_variable_values(factor, exposed_variable_values):
     return {var: this_exposed_variable_values[var] for var in exp_vars}
 
 
-class EnergyScaler(AbstractFactor):
-    """
-    Factor that scales output based on true energy.
-
-    Args:
-        name (str): Identifier for the factor.
-    """
-    def __init__(self, name: str):
-        self.name = name
-
-    def required_variables(self) -> List[str]:
-        return ["true_energy"]
-
-    def exposed_variables(self) -> List[str]:
-        return ["energy_scale"]
-
-    def evaluate(
-        self,
-        output: np.ndarray,
-        input_variables: Dict[str, Union[np.ndarray, float]],
-        exposed_variables: Dict[str, Union[np.ndarray, float]],
-    ) -> np.ndarray:
-        input_values = input_variables["true_energy"]
-        energy_scale = exposed_variables["energy_scale"]
-        output *= (1 + input_values / 1E3 * energy_scale)
-        return output
-
-
 class PowerLawFlux(AbstractFactor):
     """
     Factor that applies a power law flux model.
@@ -129,18 +101,14 @@ class PowerLawFlux(AbstractFactor):
     def exposed_variables(self):
         return ["flux_norm", "spectral_index"]
 
-    def evaluate(self, output, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables):
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_exposed_variable_values(self, exposed_variables)
         true_energy = input_values["true_energy"]
         flux_norm = exposed_values["flux_norm"]
         spectral_index = exposed_values["spectral_index"]
 
-        output *= backend.multiply(
-            flux_norm * self.baseline_norm,
-            backend.power(true_energy / self.pivot_energy, -spectral_index)
-        )
-        return output
+        return flux_norm * self.baseline_norm * backend.power(true_energy / self.pivot_energy, -spectral_index)
 
 
 class FluxNorm(AbstractFactor):
@@ -159,12 +127,11 @@ class FluxNorm(AbstractFactor):
     def exposed_variables(self):
         return ["flux_norm"]
 
-    def evaluate(self, output, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables):
         exposed_values = get_exposed_variable_values(self, exposed_variables)
         flux_norm = exposed_values["flux_norm"]
 
-        output *= backend.multiply(flux_norm, output)
-        return output
+        return flux_norm
 
 
 class SnowstormGauss(AbstractFactor):
@@ -189,18 +156,20 @@ class SnowstormGauss(AbstractFactor):
     def exposed_variables(self):
         return ["sys_value"]
 
-    def evaluate(self, output, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables):
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_exposed_variable_values(self, exposed_variables)
         sys_value = exposed_values["sys_value"]
         sys_par = input_values[self.req_variable_name]
 
-        output *= backend.multiply(
-            backend.gauss_pdf(sys_par, sys_value, self.sys_gauss_width) /
-            backend.gauss_cdf(self.sys_sim_bounds[1], sys_value, self.sys_gauss_width),
-            1. / backend.uniform_pdf(sys_par, self.sys_sim_bounds[0], self.sys_sim_bounds[1])
+        return (
+            (
+                backend.gauss_pdf(sys_par, sys_value, self.sys_gauss_width) /
+                backend.gauss_cdf(self.sys_sim_bounds[1], sys_value, self.sys_gauss_width)
+            ) /
+            backend.uniform_pdf(sys_par, self.sys_sim_bounds[0], self.sys_sim_bounds[1])
         )
-        return output
+        
 
 
 class DeltaGamma(AbstractFactor):
@@ -221,11 +190,10 @@ class DeltaGamma(AbstractFactor):
     def exposed_variables(self):
         return ["delta_gamma"]
 
-    def evaluate(self, output, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables):
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_exposed_variable_values(self, exposed_variables)
 
         delta_gamma = exposed_values["delta_gamma"]
         true_energy = input_values["true_energy"]
-        output *= backend.power(true_energy / self.reference_energy, -delta_gamma)
-        return output
+        return backend.power(true_energy / self.reference_energy, -delta_gamma)

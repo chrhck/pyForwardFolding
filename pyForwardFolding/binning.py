@@ -120,9 +120,17 @@ class RectangularBinning(AbstractBinning):
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
         self.bin_indices = bin_indices if bin_indices is not None else []
 
+    @property
+    def hist_dims(self) -> Tuple[int]:
+        return tuple(len(edges) - 1 for edges in self.bin_edges)
+    
+    @property
+    def nbins(self) -> int:
+        return np.prod(self.hist_dims)
+
     @classmethod
     def from_pairs(cls, bin_vars_edges: List[Tuple[str, List[float]]]) -> "RectangularBinning":
-        bin_edges = tuple(backend.array(edges) for _, edges in bin_vars_edges)
+        bin_edges = tuple(backend.linspace(*edges) for _, edges in bin_vars_edges)
         bin_variables = tuple(var for var, _ in bin_vars_edges)
         return cls(bin_variables, bin_edges)
 
@@ -135,30 +143,20 @@ class RectangularBinning(AbstractBinning):
 
         if not self.bin_indices:
             self.bin_indices = []
-            for i in range(len(binning_variables[0])):
-                vals = tuple(bv[i] for bv in binning_variables)
-                indices = tuple(
-                    backend.searchsorted(edges, val, side="left") - 1
-                    for edges, val in zip(self.bin_edges, vals)
-                )
+            for bv, edges in zip(binning_variables, self.bin_edges):
+                indices = backend.searchsorted(edges, bv, side="left") - 1
                 self.bin_indices.append(indices)
 
     def build_histogram(
         self,
-        output: np.ndarray,
         weights: np.ndarray,
         binning_variables: Tuple[np.ndarray],
     ) -> np.ndarray:
         if not self.bin_indices:
             self.calculate_bin_indices(binning_variables)
 
-        output.fill(0)
-
-        if output.shape != tuple(len(edges) - 1 for edges in self.bin_edges):
-            raise ValueError("Output size must match the number of bins")
-
-        for i, weight in enumerate(weights):
-            index = self.bin_indices[i]
-            output[index] += weight
+        indices_flat = backend.ravel_multi_index(tuple(self.bin_indices), self.hist_dims)
+        output = backend.bincount(indices_flat, weights=weights, length=self.nbins)
+        output = backend.reshape(output, self.hist_dims)
 
         return output

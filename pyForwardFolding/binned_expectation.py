@@ -38,10 +38,6 @@ class BinnedExpectation:
 
     def evaluate(
         self,
-        output: np.ndarray,
-        weight_buffer: np.ndarray,
-        weight_sq_buffer: np.ndarray,
-        component_buffer: np.ndarray,
         input_variables: Dict[str, Union[np.ndarray, float]],
         exposed_variables: Dict[str, Union[np.ndarray, float]],
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -49,7 +45,6 @@ class BinnedExpectation:
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
-            output (np.ndarray): The output container. Should be initialized to zeros.
             weight_buffer (np.ndarray): Buffer for weights.
             weight_sq_buffer (np.ndarray): Buffer for squared weights.
             component_buffer (np.ndarray): Buffer for intermediate computations.
@@ -60,15 +55,15 @@ class BinnedExpectation:
             Tuple[np.ndarray, np.ndarray]: The histogram weights and squared weights representing the binned expectation.
         """
         # Evaluate the model to get weights
-        self.model.evaluate(weight_buffer, component_buffer, input_variables, exposed_variables)
-        weight_sq_buffer[:] = backend.power(weight_buffer, 2)
+        weights = self.model.evaluate(input_variables, exposed_variables)
+        weight_sq = backend.power(weights, 2)
 
         # Extract binning variables
         binning_variables = tuple(input_variables[var] for var in self.binning.required_variables())
 
         # Build histograms
-        hist = self.binning.build_histogram(output, weight_buffer, binning_variables)
-        hist_ssq = self.binning.build_histogram(output, weight_sq_buffer, binning_variables)
+        hist = self.binning.build_histogram(weights, binning_variables)
+        hist_ssq = self.binning.build_histogram(weight_sq, binning_variables)
 
         # Add contributions from binned factors
         for factor in self.binned_factors:
@@ -76,7 +71,7 @@ class BinnedExpectation:
             # TODO: Handle uncertainty for binned factors
 
         # Clamp values to avoid negative or infinite values
-        hist = backend.clamp(hist, 0, float("inf"))
-        hist_ssq = backend.clamp(hist_ssq, 0, float("inf"))
+        hist = backend.clip(hist, 0, float("inf"))
+        hist_ssq = backend.clip(hist_ssq, 0, float("inf"))
 
         return hist, hist_ssq

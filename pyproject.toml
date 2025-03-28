@@ -12,7 +12,11 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+  "jax>=0.5",
+  "pandas>=2.2",
+  "pyArrow>=19"
+]
 description = "Your project description here."
 dynamic = ["version"]
 license = "MIT"
@@ -24,7 +28,6 @@ requires-python = ">=3.10,<4"
 checks = [
   "mypy==1.9.0",
   "ruff>=0.3,<0.4",
-  "jax>=0.5"
 ]
 docs = [
   "mkdocs-material>=9,<10",
@@ -67,6 +70,7 @@ features = [
   "tests",
 ]
 path = ".venv"
+python = "3.12"
 
 [tool.hatch.envs.default.scripts]
 check = [
@@ -88,7 +92,7 @@ features = []
 path = ".venv"
 
 [tool.hatch.version]
-path = "template_python/__init__.py"
+path = "pyForwardFolding/__init__.py"
 
 [tool.mypy]
 files = ["**/*.py"]

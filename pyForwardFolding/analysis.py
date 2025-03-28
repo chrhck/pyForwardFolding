@@ -1,7 +1,8 @@
 from typing import Dict, Tuple, Union, Any
 import numpy as np
 from .binned_expectation import BinnedExpectation
-
+from .buffers import BufferManager
+from .backend import backend
 
 class Analysis:
     """
@@ -36,21 +37,13 @@ class Analysis:
 
     def evaluate(
         self,
-        output: Dict[str, np.ndarray],
-        weight_buffers: Dict[str, np.ndarray],
-        weight_sq_buffers: Dict[str, np.ndarray],
-        component_buffers: Dict[str, np.ndarray],
         datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
         exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
-        Evaluate all components in the analysis.
+        Evaluate all components in the analysis using the provided BufferManager.
 
         Args:
-            output (Dict[str, np.ndarray]): Dict of output containers for each component. Will be initialized to zero.
-            weight_buffers (Dict[str, np.ndarray]): Buffers for weights for each component.
-            weight_sq_buffers (Dict[str, np.ndarray]): Buffers for squared weights for each component.
-            component_buffers (Dict[str, np.ndarray]): Buffers for intermediate computations for each component.
             datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): A dictionary mapping component names to their input variables.
             exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated components.
 
@@ -68,30 +61,9 @@ class Analysis:
             if input_vars is None:
                 raise ValueError(f"No input variables found for component '{comp_name}'")
 
-            # Get weight buffer
-            weight_buffer = weight_buffers.get(comp_name)
-            if weight_buffer is None:
-                raise ValueError(f"No weight buffer found for component '{comp_name}'")
-            weight_buffer.fill(0)
-
-            # Get squared weight buffer
-            weight_sq_buffer = weight_sq_buffers.get(comp_name)
-            if weight_sq_buffer is None:
-                raise ValueError(f"No weight^2 buffer found for component '{comp_name}'")
-            weight_sq_buffer.fill(0)
-
-            # Get component buffer
-            component_buffer = component_buffers.get(comp_name)
-            if component_buffer is None:
-                raise ValueError(f"No component buffer found for component '{comp_name}'")
-            component_buffer.fill(0)
 
             # Evaluate the component
             hist, hist_ssq = comp.evaluate(
-                output[comp_name],
-                weight_buffer,
-                weight_sq_buffer,
-                component_buffer,
                 input_vars,
                 exposed_variables,
             )

@@ -64,8 +64,6 @@ class Model:
 
     def evaluate(
         self,
-        output: np.ndarray,
-        component_buffer: np.ndarray,
         input_variables: Dict[str, Union[np.ndarray, float]],
         exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
     ) -> np.ndarray:
@@ -73,8 +71,6 @@ class Model:
         Evaluate the model by computing the sum of all components.
 
         Args:
-            output (np.ndarray): The output array to accumulate results in. Should be initialized to zeros.
-            component_buffer (np.ndarray): Buffer used for component evaluations to avoid allocations.
             input_variables (Dict[str, Union[np.ndarray, float]]): Input variables for model evaluation.
             exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated components.
 
@@ -84,14 +80,13 @@ class Model:
         Raises:
             ValueError: If any baseline weight is not found in the input variables.
         """
-        if len(component_buffer) != len(output):
-            raise ValueError("Component buffer must be as long as the output")
-
+       
         # Ensure all input variables have the same length
         input_var_lengths = [len(value) if isinstance(value, np.ndarray) else 1 for value in input_variables.values()]
         if not all(length == input_var_lengths[0] for length in input_var_lengths):
             raise ValueError("All input variables must have the same length")
 
+        output = 0.
         for component, baseline_weight in zip(self.components, self.baseline_weights):
             # Get the baseline weight value
             baseline_weight_value = input_variables.get(baseline_weight, None)
@@ -99,12 +94,12 @@ class Model:
                 raise ValueError(f"Baseline weight '{baseline_weight}' not found in input variables")
 
             # Initialize the component buffer with the baseline weight value
-            component_buffer[:] = baseline_weight_value
+            comp_eval = baseline_weight_value
 
             # Evaluate the component
-            component.evaluate(component_buffer, input_variables, exposed_variables)
+            comp_eval *= component.evaluate(input_variables, exposed_variables)
 
             # Accumulate the result into the output
-            output += component_buffer
+            output += comp_eval
 
         return output

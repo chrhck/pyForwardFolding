@@ -1,6 +1,7 @@
 from typing import Dict, Union, Tuple
 import numpy as np
 from .analysis import Analysis
+from .backend import backend
 
 
 class AbstractLikelihood:
@@ -12,7 +13,6 @@ class AbstractLikelihood:
 
     def llh(
         self,
-        outputs: Dict[str, np.ndarray],
         observed_data: Dict[str, np.ndarray],
         datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
         exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
@@ -42,7 +42,6 @@ class PoissonLikelihood(AbstractLikelihood):
 
     def llh(
         self,
-        outputs: Dict[str, np.ndarray],
         observed_data: Dict[str, np.ndarray],
         datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
         exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
@@ -52,7 +51,6 @@ class PoissonLikelihood(AbstractLikelihood):
         Compute the log-likelihood between model predictions and observed data assuming Poisson statistics.
 
         Args:
-            outputs (Dict[str, np.ndarray]): The output container to store intermediate results.
             observed_data (Dict[str, np.ndarray]): A dictionary mapping component names to observed data.
             datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): Input datasets for the model evaluation.
             exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated components.
@@ -65,7 +63,7 @@ class PoissonLikelihood(AbstractLikelihood):
             ValueError: If empty bins are encountered and `empty_bins="throw"`.
         """
         # Evaluate the analysis
-        ana_eval, ana_eval_ssq = self.analysis.evaluate(outputs, datasets, exposed_variables)
+        ana_eval, ana_eval_ssq = self.analysis.evaluate(datasets, exposed_variables)
         llh = 0.0
 
         for comp_name, comp_eval in ana_eval.items():
@@ -74,15 +72,11 @@ class PoissonLikelihood(AbstractLikelihood):
                 raise ValueError(f"No observed data for component '{comp_name}'")
 
             # Handle empty bins
-            empty_expectation = comp_eval == 0
+            non_empty_expectation = comp_eval != 0
             if empty_bins == "skip":
-                comp_eval = comp_eval[~empty_expectation]
-                obs = obs[~empty_expectation]
+
+                llh += backend.where_sum(non_empty_expectation, -comp_eval + obs * backend.log(comp_eval), 0)
             elif empty_bins == "throw":
-                if np.any(empty_expectation):
+                if not np.all(non_empty_expectation):
                     raise ValueError(f"Empty bins in component '{comp_name}'")
-
-            # Compute the log-likelihood
-            llh += np.sum(-comp_eval + obs * np.log(comp_eval))
-
         return llh

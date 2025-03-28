@@ -2,8 +2,8 @@
 factors:
   - name: "powerlaw"
     type: "PowerLawFlux"
-    pivot_energy: 1E5
-    baseline_norm: 1E-18
+    pivot_energy: 1.0E+5
+    baseline_norm: 1.0E-18
   - name: "atmo_norm"
     type: "FluxNorm"
   - name: delta_gamma

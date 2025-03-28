@@ -43,7 +43,6 @@ class ModelComponent:
 
     def evaluate(
         self,
-        output: np.ndarray,
         input_variables: Dict[str, Union[np.ndarray, float]],
         exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
     ) -> np.ndarray:
@@ -58,7 +57,10 @@ class ModelComponent:
         Returns:
             np.ndarray: The modified output vector.
         """
+
+        output = 1.
+
         for factor in self.factors:
-            factor.evaluate(output, input_variables, exposed_variables)
+            output *= factor.evaluate(input_variables, exposed_variables)
 
         return output
