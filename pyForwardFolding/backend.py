@@ -92,8 +92,30 @@ class Backend:
         Computes the natural logarithm of x.
         """
         raise NotImplementedError
-
     
+    def diff(self, x: Any) -> Any:
+        """
+        Computes the discrete difference along the specified axis.
+        """
+        raise NotImplementedError
+
+    def allclose(self, a: Any, b: Any, atol: float = 1e-8) -> bool:
+        """
+        Checks if two arrays are element-wise equal within a tolerance.
+        """
+        raise NotImplementedError
+
+    def sum(self, x: Any, axis: Any = None) -> Any:
+        """
+        Computes the sum of array elements over a given axis.
+        """
+        raise NotImplementedError
+    
+    def tanh(self, x: Any) -> Any:
+        """
+        Computes the hyperbolic tangent of x.
+        """
+        raise NotImplementedError
 
 class JAXBackend(Backend):
     """
@@ -147,7 +169,6 @@ class JAXBackend(Backend):
     def set_index_add(self, x: jnp.ndarray, index: Any, values: Any):
         x = x.at[index].add(values)
         return x
-    
         
     def fill(self, x: jnp.ndarray, value: Any): 
         x = x.at[:].set(value)
@@ -180,6 +201,18 @@ class JAXBackend(Backend):
     
     def log(self, x: jnp.ndarray) -> jnp.ndarray:
         return jnp.log(x)
+    
+    def diff(self, x: jnp.ndarray, axis=0) -> jnp.ndarray:
+        return jnp.diff(x, axis=axis)
+    
+    def allclose(self, a: jnp.ndarray, b: jnp.ndarray, atol: float = 1e-8) -> bool:
+        return jnp.allclose(a, b, atol=atol)
+    
+    def sum(self, x: jnp.ndarray, axis: Any = None) -> jnp.ndarray:
+        return jnp.sum(x, axis=axis)
+    
+    def tanh(self, x: jnp.ndarray) -> jnp.ndarray:
+        return jnp.tanh(x)
 
 
 

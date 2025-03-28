@@ -35,6 +35,14 @@ class AbstractBinning:
             return RectangularBinning.from_pairs(config["bin_vars_edges"])
         else:
             raise ValueError(f"Unknown binning type: {binning_type}")
+        
+    @property
+    def hist_dims(self) -> Tuple[int]:
+        return tuple(len(edges) - 1 for edges in self.bin_edges)
+    
+    @property
+    def nbins(self) -> int:
+        return np.prod(self.hist_dims)
 
 
 class CustomBinning(AbstractBinning):
@@ -58,27 +66,29 @@ class RelaxedBinning(AbstractBinning):
     Args:
         bin_variable (str): The variable used for binning.
         bin_edges (List[float]): The edges of the bins.
-        kernel_buffer (np.ndarray): Buffer for kernel computations.
         slope (float): The slope parameter for the tanh kernel.
     """
-    def __init__(self, bin_variable: str, bin_edges: List[float], kernel_buffer: np.ndarray, slope: float):
+    def __init__(self, bin_variable: str, bin_edges: List[float], slope: float):
         self.bin_variable = bin_variable
-        self.bin_edges = backend.array(bin_edges)
-        self.kernel_buffer = kernel_buffer
+        self.bin_edges = (backend.array(bin_edges), )
         self.slope = slope
+
+        bin_width = backend.diff(self.bin_edges[0])
+        if not backend.allclose(bin_width, bin_width[0]):
+            raise ValueError("Bin widths must be uniform")
+        self.bin_width = bin_width[0]
 
     def required_variables(self) -> List[str]:
         return [self.bin_variable]
 
     def _tanh_bin_kernel(self, x: np.ndarray, a: float, b: float) -> np.ndarray:
-        return 0.5 * (1 + backend.multiply(backend.tanh((x - a) / self.slope), backend.tanh(-(x - b) / self.slope)))
+        return 0.5 * (1 + backend.tanh((x - a) / self.slope) * backend.tanh(-(x - b) / self.slope))
 
     def _tanh_bin_kernel_norm(self, bin_width: float) -> float:
         return 1 / backend.tanh(bin_width / self.slope)
 
     def build_histogram(
         self,
-        output: np.ndarray,
         weights: np.ndarray,
         binning_variables: Tuple[np.ndarray],
     ) -> np.ndarray:
@@ -86,23 +96,17 @@ class RelaxedBinning(AbstractBinning):
             raise ValueError("RelaxedBinning only supports one binning variable")
 
         data = binning_variables[0]
-        self.kernel_buffer.fill(0)
-        output.fill(0)
 
-        bin_width = backend.diff(self.bin_edges)
-        if not backend.allclose(bin_width, bin_width[0]):
-            raise ValueError("Bin widths must be uniform")
 
-        if output.shape[0] != len(self.bin_edges) - 1:
-            raise ValueError("Output size must match the number of bins")
+        output = backend.zeros(self.hist_dims)
 
-        lower_edges = self.bin_edges[:-1]
-        upper_edges = self.bin_edges[1:]
+        lower_edges = self.bin_edges[0][:-1]
+        upper_edges = self.bin_edges[0][1:]
 
         for i, (le, ue) in enumerate(zip(lower_edges, upper_edges)):
-            output[i] = backend.sum(self._tanh_bin_kernel(data, le, ue) * weights)
+            output = backend.set_index(output, i, backend.sum(self._tanh_bin_kernel(data, le, ue) * weights))
 
-        output /= self._tanh_bin_kernel_norm(bin_width[0])
+        output /= self._tanh_bin_kernel_norm(self.bin_width)
         return output
 
 
@@ -120,13 +124,9 @@ class RectangularBinning(AbstractBinning):
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
         self.bin_indices = bin_indices if bin_indices is not None else []
 
-    @property
-    def hist_dims(self) -> Tuple[int]:
-        return tuple(len(edges) - 1 for edges in self.bin_edges)
     
-    @property
-    def nbins(self) -> int:
-        return np.prod(self.hist_dims)
+    
+    
 
     @classmethod
     def from_pairs(cls, bin_vars_edges: List[Tuple[str, List[float]]]) -> "RectangularBinning":
