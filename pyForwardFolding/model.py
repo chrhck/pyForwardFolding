@@ -66,6 +66,7 @@ class Model:
         self,
         input_variables: Dict[str, Union[np.ndarray, float]],
         exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        excluded_comps: List[str] = [],
     ) -> np.ndarray:
         """
         Evaluate the model by computing the sum of all components.
@@ -80,14 +81,15 @@ class Model:
         Raises:
             ValueError: If any baseline weight is not found in the input variables.
         """
-       
+
         # Ensure all input variables have the same length
         input_var_lengths = [len(value) if isinstance(value, np.ndarray) else 1 for value in input_variables.values()]
         if not all(length == input_var_lengths[0] for length in input_var_lengths):
             raise ValueError("All input variables must have the same length")
-
         output = 0.
         for component, baseline_weight in zip(self.components, self.baseline_weights):
+            if component.name in excluded_comps:
+                continue
             # Get the baseline weight value
             baseline_weight_value = input_variables.get(baseline_weight, None)
             if baseline_weight_value is None:

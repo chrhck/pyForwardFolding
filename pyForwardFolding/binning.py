@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Any, Type
+from typing import List, Tuple, Dict, Any, Type, Iterable
 import numpy as np
 from .backend import backend
 
@@ -35,6 +35,13 @@ class AbstractBinning:
             return RectangularBinning.from_pairs(config["bin_vars_edges"])
         else:
             raise ValueError(f"Unknown binning type: {binning_type}")
+
+    def build_histogram(
+        self,
+        weights: np.ndarray,
+        binning_variables: Tuple[np.ndarray],
+    ) -> np.ndarray:
+        raise NotImplementedError
 
 
 class CustomBinning(AbstractBinning):
@@ -115,23 +122,41 @@ class RectangularBinning(AbstractBinning):
         bin_edges (Tuple[List[float]]): The edges of the bins for each variable.
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
     """
-    def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices: List[Tuple[int]] = None):
+    bin_edges = None
+    bin_indices = []
+    bin_variables = []
+
+    def __init__(self, bin_variables: Iterable[str], bin_edges: Iterable[Iterable], bin_indices: List[Tuple[int]] = []):
         self.bin_variables = bin_variables
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
-        self.bin_indices = bin_indices if bin_indices is not None else []
+        self.bin_indices = bin_indices
 
     @property
     def hist_dims(self) -> Tuple[int]:
         return tuple(len(edges) - 1 for edges in self.bin_edges)
-    
+
     @property
     def nbins(self) -> int:
         return np.prod(self.hist_dims)
 
     @classmethod
-    def from_pairs(cls, bin_vars_edges: List[Tuple[str, List[float]]]) -> "RectangularBinning":
-        bin_edges = tuple(backend.linspace(*edges) for _, edges in bin_vars_edges)
-        bin_variables = tuple(var for var, _ in bin_vars_edges)
+    def from_pairs(cls, bin_vars_edges: List[Tuple[str, str, List[float]]]) -> "RectangularBinning":
+        if len(bin_vars_edges) < 1:
+            raise ValueError("At least one variable and its edges must be provided.")
+        bin_edges = []
+        bin_variables = []
+        for var, bin_type, edges in bin_vars_edges:
+            bin_variables.append(var)
+            if bin_type == "array":
+                bin_edges.append(backend.array(edges))
+            elif bin_type == "lin":
+                bin_edges.append(backend.linspace(*edges))
+            elif bin_type == "log":
+                bin_edges.append(backend.logspace(*edges))
+            elif bin_type == "cos":
+                bin_edges.append(backend.arccos(backend.linspace(*edges)))
+            else:
+                raise NotImplementedError(f"Unknown binning type: {bin_type}")
         return cls(bin_variables, bin_edges)
 
     def required_variables(self) -> List[str]:
@@ -155,8 +180,10 @@ class RectangularBinning(AbstractBinning):
         if not self.bin_indices:
             self.calculate_bin_indices(binning_variables)
 
-        indices_flat = backend.ravel_multi_index(tuple(self.bin_indices), self.hist_dims)
-        output = backend.bincount(indices_flat, weights=weights, length=self.nbins)
-        output = backend.reshape(output, self.hist_dims)
+        indices_flat = backend.ravel_multi_index(tuple(self.bin_indices),
+                                                 self.hist_dims)
+        output = backend.bincount(indices_flat,
+                                  weights=weights,
+                                  length=self.nbins)
 
         return output

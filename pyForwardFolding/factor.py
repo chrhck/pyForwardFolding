@@ -1,5 +1,5 @@
 from .backend import backend
-from typing import List, Dict, Union, Any, Type
+from typing import List, Dict, Union, Any, Type, Tuple
 import numpy as np
 
 
@@ -15,9 +15,9 @@ class AbstractFactor:
 
     def evaluate(
         self,
-        output: np.ndarray,
         input_variables: Dict[str, Union[np.ndarray, float]],
         exposed_variables: Dict[str, Union[np.ndarray, float]],
+        calling_key: str,
     ) -> np.ndarray:
         raise NotImplementedError
 
@@ -45,6 +45,43 @@ class AbstractFactor:
             return DeltaGamma(
                 name=config["name"],
                 reference_energy=config["reference_energy"],
+            )
+        elif factor_type == "GradientReweight":
+            return GradientReweight(
+                name=config["name"],
+                baseline_weight=config["baseline_weight"],
+                gradient_key=config["gradient_key"],
+            )
+        elif factor_type == "ModelInterpolator":
+            return ModelInterpolator(
+                name=config["name"],
+                base_key=config["base_key"],
+                alt_key=config["alt_key"],
+            )
+        elif factor_type == "SnowStormGradient":
+            return SnowStormGradient(
+                name=config["name"],
+                det_configs=config["det_configs"],
+                parameters=config["parameters"],
+                default=config["default"],
+                split_values=config["split_values"],
+                gradient_pickle=config["gradient_pickle"],
+                param_in_dict=config["MC_variables"],
+            )
+        elif factor_type == "ScaledTemplate":
+            return ScaledTemplate(
+                name=config["name"],
+                det_configs=config["det_configs"],
+                template_file=config["template_file"],
+            )
+        elif factor_type == "VetoThreshold":
+            return VetoThreshold(
+                name=config["name"],
+                threshold_a=config["threshold_a"],
+                threshold_b=config["threshold_b"],
+                threshold_c=config["threshold_c"],
+                rescale_energy=config["rescale_energy"],
+                anchor_energy=config["anchor_energy"],
             )
         else:
             raise ValueError(f"Unknown factor type: {factor_type}")
@@ -101,7 +138,7 @@ class PowerLawFlux(AbstractFactor):
     def exposed_variables(self):
         return ["flux_norm", "spectral_index"]
 
-    def evaluate(self, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables, calling_key):
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_exposed_variable_values(self, exposed_variables)
         true_energy = input_values["true_energy"]
@@ -127,7 +164,7 @@ class FluxNorm(AbstractFactor):
     def exposed_variables(self):
         return ["flux_norm"]
 
-    def evaluate(self, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables, calling_key):
         exposed_values = get_exposed_variable_values(self, exposed_variables)
         flux_norm = exposed_values["flux_norm"]
 
@@ -156,7 +193,7 @@ class SnowstormGauss(AbstractFactor):
     def exposed_variables(self):
         return ["sys_value"]
 
-    def evaluate(self, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables, calling_key):
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_exposed_variable_values(self, exposed_variables)
         sys_value = exposed_values["sys_value"]
@@ -168,8 +205,7 @@ class SnowstormGauss(AbstractFactor):
                 backend.gauss_cdf(self.sys_sim_bounds[1], sys_value, self.sys_gauss_width)
             ) /
             backend.uniform_pdf(sys_par, self.sys_sim_bounds[0], self.sys_sim_bounds[1])
-        )
-        
+        )        
 
 
 class DeltaGamma(AbstractFactor):
@@ -190,10 +226,274 @@ class DeltaGamma(AbstractFactor):
     def exposed_variables(self):
         return ["delta_gamma"]
 
-    def evaluate(self, input_variables, exposed_variables):
+    def evaluate(self, input_variables, exposed_variables, calling_key):
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_exposed_variable_values(self, exposed_variables)
 
         delta_gamma = exposed_values["delta_gamma"]
         true_energy = input_values["true_energy"]
         return backend.power(true_energy / self.reference_energy, -delta_gamma)
+
+
+class GradientReweight(AbstractFactor):
+    """
+    Gradient reweight application. (e.g barr parameters)
+    Requires precalculated gradients for each parameter in the dataset.
+
+    Args:
+        name (str): Identifier for the factor.
+        gradient_key (dict): Dictionary mapping exposed variable names to gradient variable names.
+        baseline_weight (str): Name of the baseline weight variable.
+    """
+    def __init__(self, name: str, gradient_key: Dict[str, str], baseline_weight: str):
+        self.name = name
+        self.gradient_key = gradient_key
+        self.baseline_weight = baseline_weight
+
+    def required_variables(self):
+        return list(self.gradient_key.values()) + [self.baseline_weight]
+
+    def exposed_variables(self):
+        return self.gradient_key.keys()
+
+    def evaluate(self, input_variables, exposed_variables, calling_key):
+        input_values = get_required_variable_values(self, input_variables)
+        exposed_values = get_exposed_variable_values(self, exposed_variables)
+        conv_weight = input_values[self.baseline_weight]
+        reweight = conv_weight
+        for par in self.exposed_variables():
+            par_gradient = input_variables[self.gradient_key[par]]
+            par_value = exposed_values[par]
+            reweight += par_value*par_gradient
+        return reweight/conv_weight
+
+
+class ModelInterpolator(AbstractFactor):
+    """
+    Interpolation between two models.
+
+    Args:
+        name (str): Identifier for the factor.
+        baseline_weight (str): Name of the baseline weight variable.
+        alternative_weight (str): Name of the alternative weight variable.
+    """
+    def __init__(self, name: str, base_key: Dict[str, str], alt_key: Dict[str, str]):
+        self.name = name
+        self.base_key = base_key
+        self.alt_key = alt_key
+
+    def required_variables(self):
+        return list(self.base_key.values()) + list(self.alt_key.values())
+
+    def exposed_variables(self):
+        return ["lambda_int"]
+
+    def evaluate(self, input_variables, exposed_variables, calling_key):
+        input_values = get_required_variable_values(self, input_variables)
+        exposed_values = get_exposed_variable_values(self, exposed_variables)
+        baseline_weight = input_values[self.base_key[calling_key]]
+        alternative_weight = input_values[self.alt_key[calling_key]]
+        lambda_int = exposed_values["lambda_int"]
+        return lambda_int + (1-lambda_int)*alternative_weight/baseline_weight
+
+
+class HistogramFactor(AbstractFactor):
+    bin_edges = None
+
+
+class SnowStormGradient(HistogramFactor):
+
+    """
+    Factor that applies a systematic parameter gradient.
+    Is aaplied additive to each detector histogram.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        parameters: List[str],
+        default: List[float],
+        split_values: List[Tuple],
+        gradient_pickle: str,
+        param_in_dict: List[str],
+        det_configs: Dict[str, str],
+    ):
+        """
+        Parameters
+        ----------
+        name : str
+            Name of the factor
+        parameters : list
+            List of parameter names
+        default : list
+            List of default parameter values
+        split_values : list
+            List of split values for each parameter
+        gradient_pickle : str
+            Path to pickle file containing the gradients
+        param_in_dict : list
+            List of dictionary keys for each parameter
+        """
+        import pickle
+        self.name = name
+        self.defaults = default
+        self.split_values = split_values
+        self.param_in_dict = param_in_dict
+        with open(gradient_pickle, "rb") as f:
+            self.gradient_dict = pickle.load(f)
+        self.param_names = parameters
+        self.det_configs = det_configs
+        self.bin_edges = {}
+        for det_c in self.det_configs:
+            if det_configs[det_c] in self.gradient_dict:
+                binnings = self.gradient_dict[det_configs[det_c]]['binning']
+                self.bin_edges[det_c] = []
+                self.bin_edges[det_c].append(binnings[0])
+                self.bin_edges[det_c].append(binnings[1])
+
+    def exposed_variables(self) -> List[str]:
+        return self.param_names
+
+    def evaluate(self, input_variables, exposed_variables, calling_key):
+        """
+        Evaluate the systematic parameter gradient for the given
+        detector configuration and the given exposed variables.
+
+        Parameters
+        ----------
+        exposed_variables : dict
+            Dictionary of exposed variables
+        det_conf : str
+            Detector configuration for which to evaluate the gradient
+        """
+        det_conf = self.det_configs[calling_key]
+        t_gradients = float(
+            self.gradient_dict[det_conf]["settings"]['config'][det_conf]['livetime']
+        )
+        exposed_values = get_exposed_variable_values(self, exposed_variables)
+        gradients = self.gradient_dict[det_conf]
+        # calculate variation of systematic parameters w.r.t. split
+        #   value in order to correctly relate to the gradient dict.
+        #   Overall parameter shifts are taken into account here so
+        #   that gradients are applied w.r.t. their split value
+        #   but the fit parameter itself corresponds to the shifted value
+        mu_add = 0
+        ssq_add = 0
+        for i, par in enumerate(exposed_values):
+            # default case: add (first) variation of
+            # p/params_in_dict[i] to dict
+            # print(self.gradient_dict[det_conf].keys())
+            value = exposed_values[par]
+            gradients = self.gradient_dict[det_conf][self.param_in_dict[i]]
+            mu_add += (value - self.split_values[i]) *\
+                gradients["gradient"].flatten()
+            ssq_add += ((value - self.split_values[i]) *
+                        gradients["gradient_error"].flatten())**2
+
+        return mu_add/t_gradients, ssq_add/t_gradients**2
+
+
+class ScaledTemplate(HistogramFactor):
+    def __init__(self, name: str, template_file: str, det_configs: Dict[str, str]):
+        import pickle
+        self.name = name
+        with open(template_file, "rb") as f:
+            self.template = pickle.load(f)
+        self.det_configs = det_configs
+        self.bin_edges = {}
+        for det_c in self.det_configs:
+            if det_configs[det_c] in self.template:
+                self.bin_edges[det_c] = []
+                self.bin_edges[det_c].append(self.template[det_configs[det_c]]['energy_bins'])
+                self.bin_edges[det_c].append(self.template[det_configs[det_c]]['zenith_bins'])
+
+    def exposed_variables(self) -> List[str]:
+        return ["flux_norm"]
+
+    def required_variables(self) -> List[str]:
+        return []
+
+    def evaluate(self, input_variables, exposed_variables, calling_key):
+        # input_values = get_required_variable_values(self, input_variables)
+        # check whether the loaded file has detector configs as "top level" keys
+        det_conf = self.det_configs[calling_key]
+        if det_conf in self.template:
+            # in case the template files contains a tempalte for more than one
+            # detector config, access the template_dict for the current on
+            template_dict = self.template[det_conf]
+        else:
+            # default case: this flux component/tempalte is for single detector
+            # config only
+            template_dict = self.template
+        exposed_values = get_exposed_variable_values(self, exposed_variables)
+        flux_norm = exposed_values["flux_norm"]
+
+        # TODO: compare template binning with configured one
+        if "template_fluctuation" in template_dict:
+            template_fluct = (template_dict["template_fluctuation"]*flux_norm)**2
+        else:
+            template_fluct = None
+        return template_dict["template"] * flux_norm, template_fluct
+
+
+class VetoThreshold(AbstractFactor):
+    """
+    Changes the atm. passing fraction according to a second-order expansion of
+    log10(splined_passing_fraction)
+    """
+
+    def __init__(
+            self,
+            name,
+            threshold_a,
+            threshold_b,
+            threshold_c,
+            rescale_energy,
+            anchor_energy,):
+        """
+        Read fir coefficients as well as anchor energy [GeV]
+
+        Args:
+            threshold_: coefficients of second-order expansion
+            anchor_energy: energy at which log10(PF) was expanded
+            rescale_energy: scale 10**(fit parameter) to energy # TODO
+        """
+        self.name = name
+        self.used_vars = [threshold_a, threshold_b, threshold_c]
+        self.a = threshold_a
+        self.b = threshold_b
+        self.c = threshold_c
+        self.e_rescale = rescale_energy
+        self.e_anchor = anchor_energy
+
+    def required_variables(self):
+        return list(self.a.values()) + list(self.b.values()) + list(self.c.values())
+
+    def exposed_variables(self):
+        return ["e_threshold"]
+
+    def evaluate(self, input_variables, exposed_variables, calling_key):
+        """Return aesara graph"""
+        if self.a[calling_key] not in input_variables:
+            return 1.0
+        input_values = get_required_variable_values(self, input_variables)
+        exposed_values = get_exposed_variable_values(self, exposed_variables)
+        e_threshold = exposed_values["e_threshold"]
+        a = input_values[self.a[calling_key]]
+        b = input_values[self.b[calling_key]]
+        c = input_values[self.c[calling_key]]
+        # parameter value to original energy scale, minus point at which
+        # expansion was done
+        # parameter itself transformed to log10:
+        # e_t is log_10(energy threshold / 100 GeV)
+        e = self.e_rescale * backend.exp(
+            backend.log(10) * e_threshold
+        ) - self.e_anchor
+        # i.e. energy threshold in [5 GeV, 3 TeV] = e_t in [-1.301, 1.477]
+
+        # second order expansion from fit coefficients
+        log_pf = a + b*e + c*e*e
+        # expansion is in log10(passing_fraction)
+        reweight = backend.exp(backend.log(10) * log_pf)
+        # atm. weights are multiplied by passing fraction
+        return reweight

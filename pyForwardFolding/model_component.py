@@ -61,6 +61,6 @@ class ModelComponent:
         output = 1.
 
         for factor in self.factors:
-            output *= factor.evaluate(input_variables, exposed_variables)
+            output *= factor.evaluate(input_variables, exposed_variables, self.name)
 
         return output

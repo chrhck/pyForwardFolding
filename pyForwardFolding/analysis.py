@@ -4,6 +4,7 @@ from .binned_expectation import BinnedExpectation
 from .buffers import BufferManager
 from .backend import backend
 
+
 class Analysis:
     """
     Represents a complete analysis consisting of multiple binned expectations.
@@ -60,7 +61,6 @@ class Analysis:
             input_vars = datasets.get(comp_name)
             if input_vars is None:
                 raise ValueError(f"No input variables found for component '{comp_name}'")
-
 
             # Evaluate the component
             hist, hist_ssq = comp.evaluate(

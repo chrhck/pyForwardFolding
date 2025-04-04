@@ -70,13 +70,41 @@ class PoissonLikelihood(AbstractLikelihood):
             obs = observed_data.get(comp_name)
             if obs is None:
                 raise ValueError(f"No observed data for component '{comp_name}'")
-
             # Handle empty bins
-            non_empty_expectation = comp_eval != 0
+            non_empty_expectation = comp_eval > 0
+            non_empty_observations = obs > 0
             if empty_bins == "skip":
-
-                llh += backend.where_sum(non_empty_expectation, -comp_eval + obs * backend.log(comp_eval), 0)
+                comp_eval_shift = backend.select(non_empty_expectation,
+                                                 comp_eval,
+                                                 comp_eval + 1e-8)
+                obs_shift = backend.select(non_empty_observations,
+                                           obs,
+                                           obs + 1e-8)
+                llh_bins = backend.where_sum(non_empty_expectation,
+                                             -comp_eval + obs * backend.log(comp_eval_shift),
+                                             0)
+                llh_sat = backend.where_sum(non_empty_observations,
+                                            -obs + obs * backend.log(obs_shift),
+                                            0)
+                llh += (llh_bins - llh_sat)
             elif empty_bins == "throw":
                 if not np.all(non_empty_expectation):
                     raise ValueError(f"Empty bins in component '{comp_name}'")
+        return llh
+
+
+class Prior:
+    def evaluate(self, exposed_variables):
+        raise NotImplementedError
+
+
+class GaussianPrior(Prior):
+    def __init__(self, factor, prior: Dict[str, Tuple[float, float]]):
+        self.prior = prior
+        self.factor = factor
+
+    def evaluate(self, exposed_variables):
+        llh = 0
+        for par, (mean, std) in self.prior.items():
+            llh += (exposed_variables[self.factor][par] - mean)**2 / std**2
         return llh

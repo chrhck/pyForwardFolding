@@ -1,7 +1,7 @@
 from typing import Any
 import jax.numpy as jnp
 from math import sqrt, pi, exp
-
+import jax.scipy.special
 
 
 class Backend:
@@ -181,7 +181,26 @@ class JAXBackend(Backend):
     def log(self, x: jnp.ndarray) -> jnp.ndarray:
         return jnp.log(x)
 
+    def select(self, condition, x, y):
+        return jnp.where(condition, x, y)
+    
+    def gammaln(self, x):
+        return jax.scipy.special.gammaln(x)
 
+    def func_and_grad(self, func):
+        return jax.jit(jax.value_and_grad(func))
+    
+    def compile(self, func):
+        return jax.jit(func)
+    
+    def grad(self, func):
+        return jax.grad(func)
+    
+    def logspace(self, start, stop, num):
+        return jnp.logspace(start, stop, num)
+    
+    def arccos(self, x):
+        return jnp.arccos(x)
 
 # Default backend instance
 backend = JAXBackend()

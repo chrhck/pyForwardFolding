@@ -27,6 +27,12 @@ def analysis_from_config(path: str) -> Analysis:
     ]
     factors_name_mapping = {f.name: f for f in factors}
 
+    hist_factors = [
+        AbstractFactor.construct_from(factor_conf)
+        for factor_conf in conf.get("hist_factors", [])
+    ]
+    hist_factors_name_mapping = {f.name: f for f in hist_factors}
+
     components = [
         ModelComponent(
             c["name"],
@@ -50,7 +56,15 @@ def analysis_from_config(path: str) -> Analysis:
 
     for dataset in dset_config:
         binning = AbstractBinning.construct_from(dataset["binning"])
-        binned_expectations[dataset["name"]] = BinnedExpectation(model, binning)
+        lifetime = dataset.get("lifetime", 1.0)
+        binned_expectations[dataset["name"]] = BinnedExpectation(
+            dataset["name"],
+            model,
+            binning,
+            binned_factors={factor: hist_factors_name_mapping[factor] for factor in dataset["hist_factors"]},
+            lifetime=lifetime,
+            excluded_comps=dataset.get("excluded_comps", []),
+            )
 
     ana = Analysis(binned_expectations)
     return ana
