@@ -53,6 +53,7 @@ class CustomBinning(AbstractBinning):
         bin_indices (List[int]): Indices for the bins.
     """
     def __init__(self, bin_indices: List[int]):
+        super().__init__()
         self.bin_indices = bin_indices
 
     def required_variables(self) -> List[str]:
@@ -69,6 +70,7 @@ class RelaxedBinning(AbstractBinning):
         slope (float): The slope parameter for the tanh kernel.
     """
     def __init__(self, bin_variable: str, bin_edges: List[float], slope: float):
+        super().__init__()
         self.bin_variable = bin_variable
         self.bin_edges = (backend.array(bin_edges), )
         self.slope = slope
@@ -120,13 +122,10 @@ class RectangularBinning(AbstractBinning):
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
     """
     def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices: List[Tuple[int]] = None):
+        super().__init__()
         self.bin_variables = bin_variables
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
         self.bin_indices = bin_indices if bin_indices is not None else []
-
-    
-    
-    
 
     @classmethod
     def from_pairs(cls, bin_vars_edges: List[Tuple[str, List[float]]]) -> "RectangularBinning":
