@@ -27,32 +27,32 @@ class BinnedExpectation:
         """
         return set(self.binning.required_variables()).union(self.model.required_variables())
 
-    def exposed_variables(self) -> List[str]:
+    def exposed_parameters(self) -> List[str]:
         """
         Get variables exposed by the BinnedExpectation.
 
         Returns:
-            List[str]: Variables exposed by the underlying model.
+            List[str]: Parameters exposed by the underlying model.
         """
-        return self.model.exposed_variables()
+        return self.model.exposed_parameters()
 
     def evaluate(
         self,
         input_variables: Dict[str, Union[np.ndarray, float]],
-        exposed_variables: Dict[str, Union[np.ndarray, float]],
+        parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
             input_variables (Dict[str, Union[np.ndarray, float]]): A collection of input variables.
-            exposed_variables (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
+            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
 
         Returns:
             Tuple[np.ndarray, np.ndarray]: The histogram weights and squared weights representing the binned expectation.
         """
         # Evaluate the model to get weights
-        weights = self.model.evaluate(input_variables, exposed_variables)
+        weights = self.model.evaluate(input_variables, parameter_values)
         weight_sq = backend.power(weights, 2)
 
         # Extract binning variables
@@ -64,7 +64,7 @@ class BinnedExpectation:
 
         # Add contributions from binned factors
         for factor in self.binned_factors:
-            hist += factor.evaluate(input_variables, exposed_variables)
+            hist += factor.evaluate(input_variables, parameter_values)
             # TODO: Handle uncertainty for binned factors
 
         # Clamp values to avoid negative or infinite values

@@ -23,14 +23,14 @@ class ModelComponent:
         if len(factor_names) != len(set(factor_names)):
             raise ValueError("Factor names must be unique")
 
-    def exposed_variables(self) -> Dict[str, List[str]]:
+    def exposed_parameters(self) -> Dict[str, List[str]]:
         """
         Get the variables exposed by each factor in the model component.
 
         Returns:
-            Dict[str, List[str]]: A dictionary mapping factor names to their exposed variables.
+            Dict[str, Dict[str, str]]: A dictionary mapping factor names to their exposed variables.
         """
-        return {factor.name: factor.exposed_variables() for factor in self.factors}
+        return {factor.name: factor.parameter_mapping for factor in self.factors}
 
     def required_variables(self) -> Set[str]:
         """
@@ -39,12 +39,12 @@ class ModelComponent:
         Returns:
             Set[str]: A set containing all required variables from all factors.
         """
-        return {var for factor in self.factors for var in factor.required_variables()}
+        return {var for factor in self.factors for var in factor.required_variables}
 
     def evaluate(
         self,
         input_variables: Dict[str, Union[np.ndarray, float]],
-        exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> np.ndarray:
         """
         Evaluate all factors in the model component in sequence, updating the output.
@@ -52,7 +52,7 @@ class ModelComponent:
         Args:
             output (np.ndarray): Vector that will be modified by the evaluation.
             input_variables (Dict[str, Union[np.ndarray, float]]): Variables available as inputs to the factors.
-            exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated factors.
+            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated factors.
 
         Returns:
             np.ndarray: The modified output vector.
@@ -61,6 +61,6 @@ class ModelComponent:
         output = 1.
 
         for factor in self.factors:
-            output *= factor.evaluate(input_variables, exposed_variables)
+            output *= factor.evaluate(input_variables, parameter_values)
 
         return output

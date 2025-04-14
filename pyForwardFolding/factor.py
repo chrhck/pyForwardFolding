@@ -142,8 +142,8 @@ class FluxNorm(AbstractFactor):
     def __init__(self, name:str, param_mapping: Dict[str, str] = None):
         super().__init__(name, param_mapping)
 
-    def evaluate(self, input_variables, exposed_variables):
-        exposed_values = get_parameter_values(self, exposed_variables)
+    def evaluate(self, input_variables, parameter_values):
+        exposed_values = get_parameter_values(self, parameter_values)
         flux_norm = exposed_values["flux_norm"]
 
         return flux_norm
@@ -170,9 +170,9 @@ class SnowstormGauss(AbstractFactor):
         self.req_vars = [req_variable_name]
 
 
-    def evaluate(self, input_variables, exposed_variables):
+    def evaluate(self, input_variables, parameter_values):
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_parameter_values(self, exposed_variables)
+        exposed_values = get_parameter_values(self, parameter_values)
         sys_value = exposed_values["scale"]
         sys_par = input_values[self.req_vars[0]]
 
@@ -203,9 +203,9 @@ class DeltaGamma(AbstractFactor):
         self.reference_energy = reference_energy
 
 
-    def evaluate(self, input_variables, exposed_variables):
+    def evaluate(self, input_variables, parameter_values):
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_parameter_values(self, exposed_variables)
+        exposed_values = get_parameter_values(self, parameter_values)
 
         delta_gamma = exposed_values["delta_gamma"]
         true_energy = input_values["true_energy"]
