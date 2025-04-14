@@ -24,29 +24,29 @@ class Analysis:
         """
         return set.union(*(comp.required_variables() for comp in self.expectations.values()))
 
-    def exposed_variables(self) -> Dict[str, Any]:
+    def exposed_parameters(self) -> Dict[str, Any]:
         """
-        Get all variables exposed by the analysis expectations.
+        Get all parameters exposed by the analysis expectations.
 
         Returns:
             Dict[str, Any]: A merged dictionary of all exposed variables from all expectations.
         """
         exposed = {}
         for comp in self.expectations.values():
-            exposed.update(comp.exposed_variables())
+            exposed.update(comp.exposed_parameters())
         return exposed
 
     def evaluate(
         self,
         datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
-        exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
         Evaluate all expectations in the analysis using the provided BufferManager.
 
         Args:
             datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): A dictionary mapping component names to their input variables.
-            exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated expectations.
+            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated expectations.
 
         Returns:
             Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]: A tuple containing:
@@ -65,7 +65,7 @@ class Analysis:
             # Evaluate the component
             hist, hist_ssq = comp.evaluate(
                 input_vars,
-                exposed_variables,
+                parameter_values,
             )
 
             # Store results

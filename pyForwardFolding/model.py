@@ -50,22 +50,22 @@ class Model:
         """
         return {var for component in self.components for var in component.required_variables()}
 
-    def exposed_variables(self) -> Dict[str, List[str]]:
+    def exposed_parameters(self) -> Dict[str, List[str]]:
         """
-        Get all variables exposed by the model's components.
+        Get all parameters exposed by the model's components.
 
         Returns:
-            Dict[str, List[str]]: A merged dictionary of all exposed variables from all components.
+            Dict[str, Dict[str, str]]: A merged dictionary of all exposed parameters from all components.
         """
         exposed = {}
         for component in self.components:
-            exposed.update(component.exposed_variables())
+            exposed.update(component.exposed_parameters())
         return exposed
 
     def evaluate(
         self,
         input_variables: Dict[str, Union[np.ndarray, float]],
-        exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        parameter_values: Dict[str, Dict[str, Union[np.ndarray, float]]],
         excluded_comps: List[str] = [],
     ) -> np.ndarray:
         """
@@ -73,7 +73,7 @@ class Model:
 
         Args:
             input_variables (Dict[str, Union[np.ndarray, float]]): Input variables for model evaluation.
-            exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated components.
+            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
 
         Returns:
             np.ndarray: The modified `output` containing the sum of all components.
@@ -99,7 +99,7 @@ class Model:
             comp_eval = baseline_weight_value
 
             # Evaluate the component
-            comp_eval *= component.evaluate(input_variables, exposed_variables)
+            comp_eval *= component.evaluate(input_variables, parameter_values)
 
             # Accumulate the result into the output
             output += comp_eval
