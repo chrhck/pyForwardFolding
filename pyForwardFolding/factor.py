@@ -1,6 +1,8 @@
-from .backend import backend
-from typing import List, Dict, Union, Any, Type, Tuple
+from typing import Any, Dict, List, Type, Union
+
 import numpy as np
+
+from .backend import backend
 
 
 class AbstractFactor:
@@ -8,8 +10,15 @@ class AbstractFactor:
     Abstract class representing a per-event factor.
     """
     factor_parameters: List[str] = []
+    req_vars: List[str] = []
 
     def __init__(self, name:str, param_mapping: Dict[str, str] = None):
+        """
+        Initialize the factor with a name and parameter mapping.
+        Args:
+            name (str): Identifier for the factor.
+            param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
+        """
         self.name = name
 
         if param_mapping is None:
@@ -24,6 +33,10 @@ class AbstractFactor:
     @property
     def parameter_mapping(self) -> Dict[str, str]:
         return self.param_mapping
+    
+    @property
+    def exposed_parameters(self) -> List[str]:
+        return self.factor_parameters
     
     
     def evaluate(
@@ -247,39 +260,6 @@ class DeltaGamma(AbstractFactor):
         return backend.power(true_energy / self.reference_energy, -delta_gamma)
 
 
-class GradientReweight(AbstractFactor):
-    """
-    Gradient reweight application. (e.g barr parameters)
-    Requires precalculated gradients for each parameter in the dataset.
-
-    Args:
-        name (str): Identifier for the factor.
-        gradient_key (dict): Dictionary mapping exposed variable names to gradient variable names.
-        baseline_weight (str): Name of the baseline weight variable.
-    """
-    def __init__(self, name: str, gradient_key: Dict[str, str], baseline_weight: str):
-        self.name = name
-        self.gradient_key = gradient_key
-        self.baseline_weight = baseline_weight
-
-    def required_variables(self):
-        return list(self.gradient_key.values()) + [self.baseline_weight]
-
-    def exposed_variables(self):
-        return self.gradient_key.keys()
-
-    def evaluate(self, input_variables, exposed_variables, calling_key):
-        input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_exposed_variable_values(self, exposed_variables)
-        conv_weight = input_values[self.baseline_weight]
-        reweight = conv_weight
-        for par in self.exposed_variables():
-            par_gradient = input_variables[self.gradient_key[par]]
-            par_value = exposed_values[par]
-            reweight += par_value*par_gradient
-        return reweight/conv_weight
-
-
 class ModelInterpolator(AbstractFactor):
     """
     Interpolation between two models.
@@ -288,164 +268,54 @@ class ModelInterpolator(AbstractFactor):
         name (str): Identifier for the factor.
         baseline_weight (str): Name of the baseline weight variable.
         alternative_weight (str): Name of the alternative weight variable.
+        param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
     """
-    def __init__(self, name: str, base_key: Dict[str, str], alt_key: Dict[str, str]):
-        self.name = name
-        self.base_key = base_key
-        self.alt_key = alt_key
 
-    def required_variables(self):
-        return list(self.base_key.values()) + list(self.alt_key.values())
+    factor_parameters: List[str] = ["lambda_int"]
 
-    def exposed_variables(self):
-        return ["lambda_int"]
+    def __init__(self, name: str, baseline_weight: Dict[str, str], alternative_weight: Dict[str, str], param_mapping: Dict[str, str] = None):
+        super().__init__(name, param_mapping)
+        self.base_key = baseline_weight
+        self.alt_key = alternative_weight
+        self.req_vars = [self.base_key, self.alt_key]
 
-    def evaluate(self, input_variables, exposed_variables, calling_key):
+    def evaluate(self, input_variables, parameters):
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_exposed_variable_values(self, exposed_variables)
-        baseline_weight = input_values[self.base_key[calling_key]]
-        alternative_weight = input_values[self.alt_key[calling_key]]
+        exposed_values = get_parameter_values(self, parameters)
+        baseline_weight = input_values[self.base_key]
+        alternative_weight = input_values[self.alt_key]
         lambda_int = exposed_values["lambda_int"]
         return lambda_int + (1-lambda_int)*alternative_weight/baseline_weight
 
 
-class HistogramFactor(AbstractFactor):
-    bin_edges = None
-
-
-class SnowStormGradient(HistogramFactor):
-
+class GradientReweight(AbstractFactor):
     """
-    Factor that applies a systematic parameter gradient.
-    Is aaplied additive to each detector histogram.
+    Gradient reweight application. (e.g barr parameters)
+    Requires precalculated gradients.
+
+    Args:
+        name (str): Identifier for the factor.
+        gradient_key_mapping (dict): Dictionary mapping exposed variable names to gradient variable names.
+        baseline_weight (str): Name of the baseline weight variable.
     """
 
-    def __init__(
-        self,
-        name: str,
-        parameters: List[str],
-        default: List[float],
-        split_values: List[Tuple],
-        gradient_pickle: str,
-        param_in_dict: List[str],
-        det_configs: Dict[str, str],
-    ):
-        """
-        Parameters
-        ----------
-        name : str
-            Name of the factor
-        parameters : list
-            List of parameter names
-        default : list
-            List of default parameter values
-        split_values : list
-            List of split values for each parameter
-        gradient_pickle : str
-            Path to pickle file containing the gradients
-        param_in_dict : list
-            List of dictionary keys for each parameter
-        """
-        import pickle
-        self.name = name
-        self.defaults = default
-        self.split_values = split_values
-        self.param_in_dict = param_in_dict
-        with open(gradient_pickle, "rb") as f:
-            self.gradient_dict = pickle.load(f)
-        self.param_names = parameters
-        self.det_configs = det_configs
-        self.bin_edges = {}
-        for det_c in self.det_configs:
-            if det_configs[det_c] in self.gradient_dict:
-                binnings = self.gradient_dict[det_configs[det_c]]['binning']
-                self.bin_edges[det_c] = []
-                self.bin_edges[det_c].append(binnings[0])
-                self.bin_edges[det_c].append(binnings[1])
+    def __init__(self, name: str, gradient_key_mapping: Dict[str, str], baseline_weight: str, param_mapping: Dict[str, str] = None):
+        super().__init__(name, param_mapping)
+        self.baseline_weight = baseline_weight
+        self.grad_key_map = gradient_key_mapping
+        self.req_vars = list(self.gradient_key.values()) + [self.baseline_weight]
+        self.factor_parameters = list(self.gradient_key.keys())
 
-    def exposed_variables(self) -> List[str]:
-        return self.param_names
-
-    def evaluate(self, input_variables, exposed_variables, calling_key):
-        """
-        Evaluate the systematic parameter gradient for the given
-        detector configuration and the given exposed variables.
-
-        Parameters
-        ----------
-        exposed_variables : dict
-            Dictionary of exposed variables
-        det_conf : str
-            Detector configuration for which to evaluate the gradient
-        """
-        det_conf = self.det_configs[calling_key]
-        t_gradients = float(
-            self.gradient_dict[det_conf]["settings"]['config'][det_conf]['livetime']
-        )
-        exposed_values = get_exposed_variable_values(self, exposed_variables)
-        gradients = self.gradient_dict[det_conf]
-        # calculate variation of systematic parameters w.r.t. split
-        #   value in order to correctly relate to the gradient dict.
-        #   Overall parameter shifts are taken into account here so
-        #   that gradients are applied w.r.t. their split value
-        #   but the fit parameter itself corresponds to the shifted value
-        mu_add = 0
-        ssq_add = 0
-        for i, par in enumerate(exposed_values):
-            # default case: add (first) variation of
-            # p/params_in_dict[i] to dict
-            # print(self.gradient_dict[det_conf].keys())
-            value = exposed_values[par]
-            gradients = self.gradient_dict[det_conf][self.param_in_dict[i]]
-            mu_add += (value - self.split_values[i]) *\
-                gradients["gradient"].flatten()
-            ssq_add += ((value - self.split_values[i]) *
-                        gradients["gradient_error"].flatten())**2
-
-        return mu_add/t_gradients, ssq_add/t_gradients**2
-
-
-class ScaledTemplate(HistogramFactor):
-    def __init__(self, name: str, template_file: str, det_configs: Dict[str, str]):
-        import pickle
-        self.name = name
-        with open(template_file, "rb") as f:
-            self.template = pickle.load(f)
-        self.det_configs = det_configs
-        self.bin_edges = {}
-        for det_c in self.det_configs:
-            if det_configs[det_c] in self.template:
-                self.bin_edges[det_c] = []
-                self.bin_edges[det_c].append(self.template[det_configs[det_c]]['energy_bins'])
-                self.bin_edges[det_c].append(self.template[det_configs[det_c]]['zenith_bins'])
-
-    def exposed_variables(self) -> List[str]:
-        return ["flux_norm"]
-
-    def required_variables(self) -> List[str]:
-        return []
-
-    def evaluate(self, input_variables, exposed_variables, calling_key):
-        # input_values = get_required_variable_values(self, input_variables)
-        # check whether the loaded file has detector configs as "top level" keys
-        det_conf = self.det_configs[calling_key]
-        if det_conf in self.template:
-            # in case the template files contains a tempalte for more than one
-            # detector config, access the template_dict for the current on
-            template_dict = self.template[det_conf]
-        else:
-            # default case: this flux component/tempalte is for single detector
-            # config only
-            template_dict = self.template
-        exposed_values = get_exposed_variable_values(self, exposed_variables)
-        flux_norm = exposed_values["flux_norm"]
-
-        # TODO: compare template binning with configured one
-        if "template_fluctuation" in template_dict:
-            template_fluct = (template_dict["template_fluctuation"]*flux_norm)**2
-        else:
-            template_fluct = None
-        return template_dict["template"] * flux_norm, template_fluct
+    def evaluate(self, input_variables, parameters):
+        input_values = get_required_variable_values(self, input_variables)
+        exposed_values = get_parameter_values(self, parameters)
+        baseline = input_values[self.baseline_weight]
+        reweight = baseline
+        for par in self.factor_parameters:
+            par_gradient = input_variables[self.gradient_key[par]]
+            par_value = exposed_values[par]
+            reweight += par_value*par_gradient
+        return reweight/baseline
 
 
 class VetoThreshold(AbstractFactor):
@@ -454,6 +324,8 @@ class VetoThreshold(AbstractFactor):
     log10(splined_passing_fraction)
     """
 
+    factor_parameters: List[str] = ["e_threshold"]
+
     def __init__(
             self,
             name,
@@ -461,7 +333,8 @@ class VetoThreshold(AbstractFactor):
             threshold_b,
             threshold_c,
             rescale_energy,
-            anchor_energy,):
+            anchor_energy,
+            param_mapping: Dict[str, str] = None):
         """
         Read fir coefficients as well as anchor energy [GeV]
 
@@ -470,30 +343,24 @@ class VetoThreshold(AbstractFactor):
             anchor_energy: energy at which log10(PF) was expanded
             rescale_energy: scale 10**(fit parameter) to energy # TODO
         """
-        self.name = name
-        self.used_vars = [threshold_a, threshold_b, threshold_c]
+        
+        super().__init__(name, param_mapping)
+
         self.a = threshold_a
         self.b = threshold_b
         self.c = threshold_c
         self.e_rescale = rescale_energy
         self.e_anchor = anchor_energy
+        self.req_vars = [self.a, self.b, self.c]
 
-    def required_variables(self):
-        return list(self.a.values()) + list(self.b.values()) + list(self.c.values())
+    def evaluate(self, input_variables, parameters):
 
-    def exposed_variables(self):
-        return ["e_threshold"]
-
-    def evaluate(self, input_variables, exposed_variables, calling_key):
-        """Return aesara graph"""
-        if self.a[calling_key] not in input_variables:
-            return 1.0
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_exposed_variable_values(self, exposed_variables)
+        exposed_values = get_parameter_values(self, parameters)
         e_threshold = exposed_values["e_threshold"]
-        a = input_values[self.a[calling_key]]
-        b = input_values[self.b[calling_key]]
-        c = input_values[self.c[calling_key]]
+        a = input_values[self.a]
+        b = input_values[self.b]
+        c = input_values[self.c]
         # parameter value to original energy scale, minus point at which
         # expansion was done
         # parameter itself transformed to log10:

@@ -1,5 +1,7 @@
-from typing import List, Dict, Set, Union
+from typing import Dict, List, Set, Union
+
 import numpy as np
+
 from .factor import AbstractFactor
 
 

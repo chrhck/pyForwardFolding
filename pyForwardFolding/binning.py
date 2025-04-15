@@ -1,5 +1,7 @@
-from typing import List, Tuple, Dict, Any, Type, Iterable
+from typing import Any, Dict, List, Tuple, Type
+
 import numpy as np
+
 from .backend import backend
 
 
@@ -140,18 +142,9 @@ class RectangularBinning(AbstractBinning):
             raise ValueError("At least one variable and its edges must be provided.")
         bin_edges = []
         bin_variables = []
-        for var, bin_type, edges in bin_vars_edges:
+        for var, edges in bin_vars_edges:
             bin_variables.append(var)
-            if bin_type == "array":
-                bin_edges.append(backend.array(edges))
-            elif bin_type == "lin":
-                bin_edges.append(backend.linspace(*edges))
-            elif bin_type == "log":
-                bin_edges.append(backend.logspace(*edges))
-            elif bin_type == "cos":
-                bin_edges.append(backend.arccos(backend.linspace(*edges)))
-            else:
-                raise NotImplementedError(f"Unknown binning type: {bin_type}")
+            bin_edges.append(backend.linspace(*edges))
         return cls(bin_variables, bin_edges)
 
     def required_variables(self) -> List[str]:
@@ -181,4 +174,4 @@ class RectangularBinning(AbstractBinning):
                                   weights=weights,
                                   length=self.nbins)
 
-        return output
+        return output.reshape(self.hist_dims)

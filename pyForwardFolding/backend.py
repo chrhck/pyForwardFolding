@@ -1,6 +1,7 @@
+from math import pi
 from typing import Any
+
 import jax.numpy as jnp
-from math import sqrt, pi, exp
 import jax.scipy.special
 
 

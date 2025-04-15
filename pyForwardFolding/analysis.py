@@ -1,8 +1,8 @@
-from typing import Dict, Tuple, Union, Any
+from typing import Any, Dict, Tuple, Union
+
 import numpy as np
+
 from .binned_expectation import BinnedExpectation
-from .buffers import BufferManager
-from .backend import backend
 
 
 class Analysis:

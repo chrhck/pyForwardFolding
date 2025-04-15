@@ -1,11 +1,11 @@
-from typing import Dict, Any
 import yaml
-from .factor import AbstractFactor
-from .model_component import ModelComponent
-from .model import Model
-from .binning import AbstractBinning
-from .binned_expectation import BinnedExpectation
+
 from .analysis import Analysis
+from .binned_expectation import BinnedExpectation
+from .binning import AbstractBinning
+from .factor import AbstractFactor
+from .model import Model
+from .model_component import ModelComponent
 
 
 def analysis_from_config(path: str) -> Analysis:
@@ -57,13 +57,13 @@ def analysis_from_config(path: str) -> Analysis:
     for dataset in dset_config:
         binning = AbstractBinning.construct_from(dataset["binning"])
         lifetime = dataset.get("lifetime", 1.0)
+        hist_factors = dataset.get("hist_factors", [])
         binned_expectations[dataset["name"]] = BinnedExpectation(
             dataset["name"],
             model,
             binning,
-            binned_factors={factor: hist_factors_name_mapping[factor] for factor in dataset["hist_factors"]},
+            binned_factors={factor: hist_factors_name_mapping[factor] for factor in hist_factors},
             lifetime=lifetime,
-            excluded_comps=dataset.get("excluded_comps", []),
             )
 
     ana = Analysis(binned_expectations)

@@ -1,8 +1,10 @@
-from typing import Callable, Dict, Any, Tuple, List
-from scipy.optimize import minimize, Bounds
-from .likelihood import AbstractLikelihood, Prior, GaussianPrior
-from .backend import backend
+from typing import Any, Dict, List, Tuple
+
 import iminuit
+from scipy.optimize import Bounds, minimize
+
+from .backend import backend
+from .likelihood import AbstractLikelihood, GaussianPrior, Prior
 
 
 def flat_index_dict_mapping(exp_vars: Dict[str, List[str]], fixed_params: Dict[str, Dict[str, Any]] = None) -> Dict[str, Dict[str, int]]:

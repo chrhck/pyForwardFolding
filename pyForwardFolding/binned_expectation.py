@@ -1,9 +1,11 @@
-from typing import List, Dict, Tuple, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
+
 import numpy as np
+
 from .backend import backend
-from .factor import AbstractFactor, HistogramFactor
-from .model import Model
+from .binned_factor import AbstractBinnedFactor
 from .binning import AbstractBinning, RectangularBinning
+from .model import Model
 
 
 class BinnedExpectation:
@@ -13,7 +15,6 @@ class BinnedExpectation:
     Args:
         model (AbstractFactor): The model used to calculate weights for each bin.
         binning (AbstractBinning): The binning used to create the histogram.
-        det_config (Dict[str, Any]): Detector configuration for the binned expectation.
         binned_factors (Optional[List[AbstractFactor]]): Factors to be added to the histogram.
         lifetime (float): Lifetime of the binned expectation.
     """
@@ -21,15 +22,14 @@ class BinnedExpectation:
                  det_config: str,
                  model: Model,
                  binning: AbstractBinning,
-                 binned_factors: Optional[Dict[str, HistogramFactor]] = None,
+                 binned_factors: Optional[Dict[str, AbstractBinnedFactor]] = None,
                  lifetime: float = 1.0,
-                 excluded_comps: Optional[List[str]] = []):
+                ):
         self.model = model
         self.binning = binning
         self.det_config = det_config
         self.binned_factors = binned_factors if binned_factors is not None else {}
         self.lifetime = lifetime
-        self.excluded_comps = excluded_comps
 
     def required_variables(self) -> set:
         """
@@ -40,16 +40,16 @@ class BinnedExpectation:
         """
         return set(self.binning.required_variables()).union(self.model.required_variables())
 
-    def exposed_variables(self) -> Dict[str, List[str]]:
+    def exposed_parameters(self) -> Dict[str, List[str]]:
         """
-        Get variables exposed by the BinnedExpectation.
+        Get parameters exposed by the BinnedExpectation.
 
         Returns:
             Dict[str, List[str]]: Variables exposed by the underlying model.
         """
-        exposed = self.model.exposed_variables()
+        exposed = self.model.exposed_parameters()
         for key in self.binned_factors:
-            exposed.update({key: self.binned_factors[key].exposed_variables()})
+            exposed.update({key: self.binned_factors[key].exposed_parameters()})
         return exposed
 
     def evaluate(
@@ -69,8 +69,7 @@ class BinnedExpectation:
         """
         # Evaluate the model to get weights
         weights = self.model.evaluate(input_variables,
-                                      parameter_values,
-                                      excluded_comps=self.excluded_comps)
+                                      parameter_values,)
         weight_sq = backend.power(weights, 2)
         # Extract binning variables
         binning_variables = tuple(input_variables[var] for var in self.binning.required_variables())
@@ -102,7 +101,7 @@ class BinnedExpectation:
                         )
             hist_add, hist_ssq_add = factor.evaluate(input_variables,
                                                      parameter_values,
-                                                     self.det_config,)
+                                                    )
             hist += hist_add*self.lifetime
             if hist_ssq_add is not None:
                 hist_ssq += hist_ssq_add*self.lifetime**2
