@@ -3,7 +3,7 @@ import yaml
 from .analysis import Analysis
 from .binned_expectation import BinnedExpectation
 from .binning import AbstractBinning
-from .factor import AbstractFactor
+from .factor import AbstractBinnedFactor, AbstractFactor
 from .model import Model
 from .model_component import ModelComponent
 
@@ -28,7 +28,7 @@ def analysis_from_config(path: str) -> Analysis:
     factors_name_mapping = {f.name: f for f in factors}
 
     hist_factors = [
-        AbstractFactor.construct_from(factor_conf)
+        AbstractBinnedFactor.construct_from(factor_conf)
         for factor_conf in conf.get("hist_factors", [])
     ]
     hist_factors_name_mapping = {f.name: f for f in hist_factors}

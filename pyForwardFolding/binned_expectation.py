@@ -3,8 +3,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from .backend import backend
-from .binned_factor import AbstractBinnedFactor
 from .binning import AbstractBinning, RectangularBinning
+from .factor import AbstractBinnedFactor
 from .model import Model
 
 
