@@ -28,7 +28,7 @@ requires-python = ">=3.10,<4"
 [project.optional-dependencies]
 checks = [
   "mypy==1.9.0",
-  "ruff>=0.3,<0.4",
+  "ruff>=0.11",
   "iminuit>=2.31",
 ]
 docs = [
@@ -72,6 +72,11 @@ features = [
 ]
 path = ".venv"
 python = "3.12"
+dependencies = [
+  "ipykernel",
+  "pandas",
+  "matplotlib"
+]
 
 [tool.hatch.envs.default.scripts]
 check = [

@@ -23,33 +23,54 @@ factors:
     req_variable_name: "e_smearing"
   - name: barr_gradients
     type: "GradientReweight"
-    gradient_key:
+    gradient_key_mapping:
         barr_h: "barr_h_gradient"
         barr_w: "barr_w_gradient"
         barr_z: "barr_z_gradient"
         barr_y: "barr_y_gradient"
     baseline_weight: "conv_weight"
-  - name: "CR_intp"
+  - name: "CR_intp_conv"
     type: "ModelInterpolator"
-    base_key:
-      conv: "conv_weight"
-      prompt: "prompt_weight"
-    alt_key: 
-      conv: "conv_weight_alt"
-      prompt: "prompt_weight_alt"
-  - name: "effective_veto"
+    baseline_weight: "conv_weight"
+    alternative_weight: "conv_weight_alt"
+  - name: "CR_intp_prompt"
+    type: "ModelInterpolator"
+    baseline_weight: "prompt_weight"
+    alternative_weight: "prompt_weight_alt"
+  - name: "effective_veto_conv"
     type: "VetoThreshold"
-    threshold_a: 
-      conv: "log_PF_at100GeV_conv_a"
-      prompt: "log_PF_at100GeV_pr_a"
-    threshold_b: 
-      conv: "log_PF_at100GeV_conv_b"
-      prompt: "log_PF_at100GeV_pr_b"
-    threshold_c: 
-      conv: "log_PF_at100GeV_conv_c"
-      prompt: "log_PF_at100GeV_pr_c"
+    threshold_a: "log_PF_at100GeV_conv_a"
+    threshold_b: "log_PF_at100GeV_conv_b"
+    threshold_c: "log_PF_at100GeV_conv_c"
     rescale_energy: 100
     anchor_energy: 100
+  - name: "effective_veto_prompt"
+    type: "VetoThreshold"
+    threshold_a: "log_PF_at100GeV_pr_a"
+    threshold_b: "log_PF_at100GeV_pr_b"
+    threshold_c: "log_PF_at100GeV_pr_c"
+    rescale_energy: 100
+    anchor_energy: 100
+
+components:
+  - name: "astro"
+    factors: ["powerlaw"]
+  - name: "conv"
+    factors: ["conv_norm", "delta_gamma", "barr_gradients", "CR_intp_conv", "effective_veto_conv"]
+  - name: "prompt"
+    factors: ["prompt_norm", "delta_gamma", "CR_intp_prompt", "effective_veto_prompt"]
+
+
+model:
+  name: "model"
+  components:
+  - name: "astro"
+    baseline_weight: "baseline_weight"
+  - name: "conv"
+    baseline_weight: "conv_weight"
+  - name: "prompt"
+    baseline_weight: "prompt_weight"
+
 
 hist_factors:
   - name: SnowStormSystematics
@@ -76,24 +97,6 @@ hist_factors:
       Cascades Muon: "IC86_pass2_SnowStorm_v2_cscd_muon"
     template_file: "/data/ana/Diffuse/GlobalFit/NNMFit/templates/cscd_muongun_ALL_KDE_15zen_manual_ssq.pickle"
 
-components:
-  - name: "astro"
-    factors: ["powerlaw"]
-  - name: "conv"
-    factors: ["conv_norm", "delta_gamma", "barr_gradients", "CR_intp", "effective_veto"]
-  - name: "prompt"
-    factors: ["prompt_norm", "delta_gamma", "CR_intp", "effective_veto"]
-
-
-model:
-  name: "model"
-  components:
-  - name: "astro"
-    baseline_weight: "baseline_weight"
-  - name: "conv"
-    baseline_weight: "conv_weight"
-  - name: "prompt"
-    baseline_weight: "prompt_weight"
 
 datasets:
   - name: Northern Tracks
@@ -101,30 +104,23 @@ datasets:
     binning:
       type: RectangularBinning
       bin_vars_edges:
-        - ["reco_energy", "log", [2.5,7,46]]
-        - ["reco_zenith", "cos", [-1, 0.0872, 34]]
-    det_conf: "IC86_pass2_SnowStorm_v2_tracks"
+        - ["log10_reco_energy", [2.5,7,46]]
+        - ["cos_reco_zenith", [-1, 0.0872, 34]]
     hist_factors: ["SnowStormSystematics", "MuonTemplate"] 
   - name: Cascades
     lifetime: 295598014.33
     binning:
       type: RectangularBinning
       bin_vars_edges:
-        - ["reco_energy", "log", [2.8,7,22]]
-        - ["reco_zenith", "cos", [-1, 1, 16]]
-    det_conf: "IC86_pass2_SnowStorm_v2_cscd_cascade"
+        - ["log10_reco_energy",  [2.8,7,22]]
+        - ["cos_reco_zenith",  [-1, 1, 16]]
     hist_factors: ["SnowStormSystematics", "MuonGunTemplate"] 
   - name: Cascades Muon
     lifetime: 295598014.33
     binning:
       type: RectangularBinning
       bin_vars_edges:
-        - ["reco_energy", "log", [2.6, 4.8, 2]]
-        - ["reco_zenith", "cos", [-1, 1, 2]]
-    det_conf: "IC86_pass2_SnowStorm_v2_cscd_muon"
+        - ["log10_reco_energy",  [2.6, 4.8, 2]]
+        - ["cos_reco_zenith",  [-1, 1, 2]]
     hist_factors: ["SnowStormSystematics", "MuonGunTemplate"] 
-    excluded_comps: []
 
-
-
-    

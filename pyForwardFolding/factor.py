@@ -48,71 +48,14 @@ class AbstractFactor:
 
     @classmethod
     def construct_from(cls: Type["AbstractFactor"], config: Dict[str, Any]) -> "AbstractFactor":
+        
         factor_type = config.get("type")
-        param_mapping = config.get("param_mapping", None)
-        if factor_type == "PowerLawFlux":
-            return PowerLawFlux(
-                name=config["name"],
-                pivot_energy=config["pivot_energy"],
-                baseline_norm=config["baseline_norm"],
-                param_mapping=param_mapping,
-            )
-        elif factor_type == "FluxNorm":
-            return FluxNorm(name=config["name"], param_mapping=param_mapping)
-        elif factor_type == "SnowstormGauss":
-            return SnowstormGauss(
-                name=config["name"],
-                sys_gauss_width=config["sys_gauss_width"],
-                sys_sim_bounds=tuple(config["sys_sim_bounds"]),
-                req_variable_name=config["req_variable_name"],
-                param_mapping=param_mapping
-            )
-        elif factor_type == "DeltaGamma":
-            return DeltaGamma(
-                name=config["name"],
-                reference_energy=config["reference_energy"],
-                param_mapping=param_mapping
-            )
-        elif factor_type == "GradientReweight":
-            return GradientReweight(
-                name=config["name"],
-                baseline_weight=config["baseline_weight"],
-                gradient_key=config["gradient_key"],
-            )
-        elif factor_type == "ModelInterpolator":
-            return ModelInterpolator(
-                name=config["name"],
-                base_key=config["base_key"],
-                alt_key=config["alt_key"],
-            )
-        elif factor_type == "SnowStormGradient":
-            return SnowStormGradient(
-                name=config["name"],
-                det_configs=config["det_configs"],
-                parameters=config["parameters"],
-                default=config["default"],
-                split_values=config["split_values"],
-                gradient_pickle=config["gradient_pickle"],
-                param_in_dict=config["MC_variables"],
-            )
-        elif factor_type == "ScaledTemplate":
-            return ScaledTemplate(
-                name=config["name"],
-                det_configs=config["det_configs"],
-                template_file=config["template_file"],
-            )
-        elif factor_type == "VetoThreshold":
-            return VetoThreshold(
-                name=config["name"],
-                threshold_a=config["threshold_a"],
-                threshold_b=config["threshold_b"],
-                threshold_c=config["threshold_c"],
-                rescale_energy=config["rescale_energy"],
-                anchor_energy=config["anchor_energy"],
-            )
-        else:
+        factor_class = FACTORSTR_CLASS_MAPPING.get(factor_type)
+
+        if factor_class is None:
             raise ValueError(f"Unknown factor type: {factor_type}")
 
+        return factor_class.construct_from(config)
 
 def get_required_variable_values(factor, input_variable_values):
     """
@@ -166,6 +109,16 @@ class PowerLawFlux(AbstractFactor):
         self.pivot_energy = pivot_energy
         self.baseline_norm = baseline_norm
 
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "PowerLawFlux":
+        param_mapping = config.get("param_mapping", None)
+        return PowerLawFlux(
+                name=config["name"],
+                pivot_energy=config["pivot_energy"],
+                baseline_norm=config["baseline_norm"],
+                param_mapping=param_mapping,
+        )
+
 
     def evaluate(self, input_variables, parameter_values):
         input_values = get_required_variable_values(self, input_variables)
@@ -190,6 +143,14 @@ class FluxNorm(AbstractFactor):
 
     def __init__(self, name:str, param_mapping: Dict[str, str] = None):
         super().__init__(name, param_mapping)
+
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "FluxNorm":
+        param_mapping = config.get("param_mapping", None)
+        return FluxNorm(
+                name=config["name"],
+                param_mapping=param_mapping,
+        )
 
     def evaluate(self, input_variables, parameter_values):
         exposed_values = get_parameter_values(self, parameter_values)
@@ -217,6 +178,17 @@ class SnowstormGauss(AbstractFactor):
         self.sys_gauss_width = sys_gauss_width
         self.sys_sim_bounds = sys_sim_bounds
         self.req_vars = [req_variable_name]
+
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "SnowstormGauss":
+        param_mapping = config.get("param_mapping", None)
+        return SnowstormGauss(
+                name=config["name"],
+                sys_gauss_width=config["sys_gauss_width"],
+                sys_sim_bounds=tuple(config["sys_sim_bounds"]),
+                req_variable_name=config["req_variable_name"],
+                param_mapping=param_mapping
+        )
 
 
     def evaluate(self, input_variables, parameter_values):
@@ -250,6 +222,14 @@ class DeltaGamma(AbstractFactor):
         super().__init__(name, param_mapping)
         self.reference_energy = reference_energy
 
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "DeltaGamma":
+        param_mapping = config.get("param_mapping", None)
+        return DeltaGamma(
+                name=config["name"],
+                reference_energy=config["reference_energy"],
+                param_mapping=param_mapping,
+        )
 
     def evaluate(self, input_variables, parameter_values):
         input_values = get_required_variable_values(self, input_variables)
@@ -279,6 +259,16 @@ class ModelInterpolator(AbstractFactor):
         self.alt_key = alternative_weight
         self.req_vars = [self.base_key, self.alt_key]
 
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "ModelInterpolator":
+        param_mapping = config.get("param_mapping", None)
+        return ModelInterpolator(
+                name=config["name"],
+                baseline_weight=config["baseline_weight"],
+                alternative_weight=config["alternative_weight"],
+                param_mapping=param_mapping,
+        )
+
     def evaluate(self, input_variables, parameters):
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_parameter_values(self, parameters)
@@ -303,8 +293,18 @@ class GradientReweight(AbstractFactor):
         super().__init__(name, param_mapping)
         self.baseline_weight = baseline_weight
         self.grad_key_map = gradient_key_mapping
-        self.req_vars = list(self.gradient_key.values()) + [self.baseline_weight]
-        self.factor_parameters = list(self.gradient_key.keys())
+        self.req_vars = list(self.grad_key_map.values()) + [self.baseline_weight]
+        self.factor_parameters = list(self.grad_key_map.keys())
+
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "GradientReweight":
+        param_mapping = config.get("param_mapping", None)
+        return GradientReweight(
+                name=config["name"],
+                gradient_key_mapping=config["gradient_key_mapping"],
+                baseline_weight=config["baseline_weight"],
+                param_mapping=param_mapping,
+        )
 
     def evaluate(self, input_variables, parameters):
         input_values = get_required_variable_values(self, input_variables)
@@ -353,6 +353,19 @@ class VetoThreshold(AbstractFactor):
         self.e_anchor = anchor_energy
         self.req_vars = [self.a, self.b, self.c]
 
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "VetoThreshold":
+        param_mapping = config.get("param_mapping", None)
+        return VetoThreshold(
+                name=config["name"],
+                threshold_a=config["threshold_a"],
+                threshold_b=config["threshold_b"],
+                threshold_c=config["threshold_c"],
+                rescale_energy=config["rescale_energy"],
+                anchor_energy=config["anchor_energy"],
+                param_mapping=param_mapping,
+        )
+
     def evaluate(self, input_variables, parameters):
 
         input_values = get_required_variable_values(self, input_variables)
@@ -376,3 +389,14 @@ class VetoThreshold(AbstractFactor):
         reweight = backend.exp(backend.log(10) * log_pf)
         # atm. weights are multiplied by passing fraction
         return reweight
+
+
+FACTORSTR_CLASS_MAPPING = {
+    "PowerLawFlux": PowerLawFlux,
+    "FluxNorm": FluxNorm,
+    "SnowstormGauss": SnowstormGauss,
+    "DeltaGamma": DeltaGamma,
+    "GradientReweight": GradientReweight,
+    "ModelInterpolator": ModelInterpolator,
+    "VetoThreshold": VetoThreshold,
+}
