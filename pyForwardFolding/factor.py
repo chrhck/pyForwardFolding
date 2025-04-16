@@ -4,14 +4,13 @@ from typing import Any, Dict, List, Tuple, Type, Union
 import numpy as np
 
 from .backend import backend
+from .binning import AbstractBinning
 
 
 class AbstractFactor:
     """
     Abstract class representing a per-event factor.
     """
-    factor_parameters: List[str] = []
-    req_vars: List[str] = []
 
     def __init__(self, name:str, param_mapping: Dict[str, str] = None):
         """
@@ -21,11 +20,11 @@ class AbstractFactor:
             param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
         """
         self.name = name
-
-        if param_mapping is None:
-            param_mapping = {par: par for par in self.factor_parameters}
         
         self.param_mapping = param_mapping
+
+        self.factor_parameters: List[str] = []
+        self.req_vars: List[str] = []
 
     @property
     def required_variables(self) -> List[str]:
@@ -33,11 +32,13 @@ class AbstractFactor:
 
     @property
     def parameter_mapping(self) -> Dict[str, str]:
+        if self.param_mapping is None:
+            return  {par: par for par in self.factor_parameters}
         return self.param_mapping
     
     @property
     def exposed_parameters(self) -> List[str]:
-        return self.factor_parameters
+        return list(self.parameter_mapping.values())
     
     
     def evaluate(
@@ -100,8 +101,7 @@ class PowerLawFlux(AbstractFactor):
         baseline_norm (float): Baseline normalization factor.
     """
 
-    factor_parameters: List[str] = ["flux_norm", "spectral_index"]
-    req_vars: List[str] = ["true_energy"]
+    
 
     def __init__(self, name:str, pivot_energy, baseline_norm, param_mapping: Dict[str, str]=None):
         
@@ -109,6 +109,9 @@ class PowerLawFlux(AbstractFactor):
 
         self.pivot_energy = pivot_energy
         self.baseline_norm = baseline_norm
+
+        self.factor_parameters: List[str] = ["flux_norm", "spectral_index"]
+        self.req_vars: List[str] = ["true_energy"]
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "PowerLawFlux":
@@ -139,11 +142,11 @@ class FluxNorm(AbstractFactor):
         name (str): Identifier for the factor.
     """
 
-    factor_parameters: List[str] = ["flux_norm"]
-    required_variables: List[str] = []
-
     def __init__(self, name:str, param_mapping: Dict[str, str] = None):
         super().__init__(name, param_mapping)
+
+        self.factor_parameters = ["flux_norm"]
+        self.req_vars = []
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "FluxNorm":
@@ -171,14 +174,13 @@ class SnowstormGauss(AbstractFactor):
         req_variable_name (str): Name of the required variable for reweighting.
     """
 
-    factor_parameters: List[str] = ["scale"]
-
     def __init__(self, name, sys_gauss_width, sys_sim_bounds, req_variable_name, param_mapping: Dict[str, str] = None):
         super().__init__(name, param_mapping)
 
         self.sys_gauss_width = sys_gauss_width
         self.sys_sim_bounds = sys_sim_bounds
         self.req_vars = [req_variable_name]
+        self.factor_parameters = ["scale"]
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "SnowstormGauss":
@@ -216,12 +218,14 @@ class DeltaGamma(AbstractFactor):
         reference_energy (float): Reference energy for scaling.
     """
 
-    factor_parameters: List[str] = ["delta_gamma"]
-    req_vars: List[str] = ["true_energy"]
+
 
     def __init__(self, name, reference_energy, param_mapping: Dict[str, str] = None):
         super().__init__(name, param_mapping)
         self.reference_energy = reference_energy
+
+        self.factor_parameters =  ["delta_gamma"]
+        self.req_vars = ["true_energy"]
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "DeltaGamma":
@@ -252,13 +256,14 @@ class ModelInterpolator(AbstractFactor):
         param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
     """
 
-    factor_parameters: List[str] = ["lambda_int"]
+    
 
     def __init__(self, name: str, baseline_weight: Dict[str, str], alternative_weight: Dict[str, str], param_mapping: Dict[str, str] = None):
         super().__init__(name, param_mapping)
         self.base_key = baseline_weight
         self.alt_key = alternative_weight
         self.req_vars = [self.base_key, self.alt_key]
+        self.factor_parameters: List[str] = ["lambda_int"]
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "ModelInterpolator":
@@ -313,7 +318,7 @@ class GradientReweight(AbstractFactor):
         baseline = input_values[self.baseline_weight]
         reweight = baseline
         for par in self.factor_parameters:
-            par_gradient = input_variables[self.gradient_key[par]]
+            par_gradient = input_variables[self.grad_key_map[par]]
             par_value = exposed_values[par]
             reweight += par_value*par_gradient
         return reweight/baseline
@@ -325,7 +330,7 @@ class VetoThreshold(AbstractFactor):
     log10(splined_passing_fraction)
     """
 
-    factor_parameters: List[str] = ["e_threshold"]
+   
 
     def __init__(
             self,
@@ -353,6 +358,7 @@ class VetoThreshold(AbstractFactor):
         self.e_rescale = rescale_energy
         self.e_anchor = anchor_energy
         self.req_vars = [self.a, self.b, self.c]
+        self.factor_parameters: List[str] = ["e_threshold"]
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "VetoThreshold":
@@ -397,14 +403,28 @@ class AbstractBinnedFactor(AbstractFactor):
     This class should be inherited by specific implementations of binned factors.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, binning:AbstractBinning, param_mapping: Dict[str, str] = None):
         """
         Initialize the AbstractBinnedFactor with a name.
 
         Args:
             name (str): Identifier for the factor.
         """
-        super().__init__(name)
+        super().__init__(name, param_mapping)
+        self.binning = binning
+
+
+    @classmethod
+    def construct_from(cls: Type["AbstractFactor"], config: Dict[str, Any], binning:AbstractBinning) -> "AbstractFactor":
+        
+        factor_type = config.get("type")
+        factor_class = FACTORSTR_CLASS_MAPPING.get(factor_type)
+
+
+        if factor_class is None:
+            raise ValueError(f"Unknown factor type: {factor_type}")
+
+        return factor_class.construct_from(config, binning)
 
 class SnowStormGradient(AbstractBinnedFactor):
 
@@ -416,51 +436,66 @@ class SnowStormGradient(AbstractBinnedFactor):
     def __init__(
         self,
         name: str,
+        binning: AbstractBinning,
         parameters: List[str],
+        gradient_names: List[str],
         default: List[float],
         split_values: List[Tuple],
         gradient_pickle: str,
-        param_in_dict: List[str],
+        param_mapping: Dict[str, str] = None
+
     ):
         """
         Parameters
         ----------
         name : str
             Name of the factor
+        binning : AbstractBinning
+            Binning object for the factor
         parameters : list
             List of parameter names
+        gradient_names : list
+            List of gradient dictionary keys for each parameter
         default : list
             List of default parameter values
         split_values : list
             List of split values for each parameter
         gradient_pickle : str
             Path to pickle file containing the gradients
-        param_in_dict : list
-            List of dictionary keys for each parameter
+
         """
-        self.name = name
+        super().__init__(name, binning, param_mapping)
+
         self.defaults = default
         self.split_values = split_values
-        self.param_in_dict = param_in_dict
+        self.gradient_names = gradient_names
+
         with open(gradient_pickle, "rb") as f:
             self.gradients = pickle.load(f)
+
         self.factor_parameters = parameters
-        self.bin_edges = {}
 
-        binning = self.gradients["binning"]
+        ndim_grads = [len(be)-1 for be in self.gradients["binning"]]
 
-        self.bin_edges = [binning[0], binning[1]] 
+        if list(self.binning.hist_dims) != ndim_grads:
+            raise ValueError(
+                f"Mismatch between binning dimensions ({self.binning.hist_dims}) and gradient dimensions ({ndim_grads})"
+            )
+        
+        # TODO: check if bin edges are compatible?
+
 
     @classmethod
-    def construct_from(cls, config: Dict[str, Any]) -> "SnowStormGradient":
+    def construct_from(cls, config: Dict[str, Any], binning:AbstractBinning) -> "SnowStormGradient":
         return SnowStormGradient(
             name=config["name"],
+            binning=binning,
             parameters=config["parameters"],
+            gradient_names=config["gradient_names"],
             default=config["default"],
             split_values=config["split_values"],
             gradient_pickle=config["gradient_pickle"],
-            param_in_dict=config["param_in_dict"],
-            det_configs=config["det_configs"]
+            param_mapping = config.get("param_mapping", None)
         )
 
     def evaluate(self, input_variables, parameters):
@@ -471,10 +506,10 @@ class SnowStormGradient(AbstractBinnedFactor):
         """
        
         t_gradients = float(
-            self.gradient_dict["livetime"]
+            self.gradients["livetime"]
         )
         exposed_values = get_parameter_values(self, parameters)
-        gradients = self.gradient_dict[det_conf]
+
         # calculate variation of systematic parameters w.r.t. split
         #   value in order to correctly relate to the gradient dict.
         #   Overall parameter shifts are taken into account here so
@@ -482,70 +517,50 @@ class SnowStormGradient(AbstractBinnedFactor):
         #   but the fit parameter itself corresponds to the shifted value
         mu_add = 0
         ssq_add = 0
-        for i, par in enumerate(exposed_values):
-            # default case: add (first) variation of
-            # p/params_in_dict[i] to dict
-            # print(self.gradient_dict[det_conf].keys())
-            value = exposed_values[par]
-            gradients = self.gradient_dict[det_conf][self.param_in_dict[i]]
-            mu_add += (value - self.split_values[i]) *\
-                gradients["gradient"].flatten()
-            ssq_add += ((value - self.split_values[i]) *
-                        gradients["gradient_error"].flatten())**2
+
+
+        for i, sys_par in enumerate(self.exposed_parameters):
+            sys_val = exposed_values[sys_par]
+            gradient = self.gradients[self.gradient_names[i]]
+
+            mu_add += (sys_val - self.split_values[i]) *\
+                gradient["gradient"]
+            ssq_add += ((sys_val - self.split_values[i]) *
+                        gradient["gradient_error"])**2
 
         return mu_add/t_gradients, ssq_add/t_gradients**2
 
 
 class ScaledTemplate(AbstractBinnedFactor):
-    def __init__(self, name: str, template_file: str, det_configs: Dict[str, str]):
-        import pickle
-        self.name = name
+    def __init__(self, name: str, binning: AbstractBinning, template_file: str, param_mapping: Dict[str, str] = None):
+
+        super().__init__(name, binning, param_mapping)
+
         with open(template_file, "rb") as f:
             self.template = pickle.load(f)
-        self.det_configs = det_configs
-        self.bin_edges = {}
-        for det_c in self.det_configs:
-            if det_configs[det_c] in self.template:
-                self.bin_edges[det_c] = []
-                self.bin_edges[det_c].append(self.template[det_configs[det_c]]['energy_bins'])
-                self.bin_edges[det_c].append(self.template[det_configs[det_c]]['zenith_bins'])
 
+        self.factor_parameters = ["template_norm"]
+ 
     @classmethod
-    def construct_from(cls, config: Dict[str, Any]) -> "ScaledTemplate":
+    def construct_from(cls, config: Dict[str, Any], binning:AbstractBinning) -> "ScaledTemplate":
         return ScaledTemplate(
             name=config["name"],
+            binning=binning,
             template_file=config["template_file"],
-            det_configs=config["det_configs"]
+            param_mapping = config.get("param_mapping", None)
         )
 
-
-    def exposed_variables(self) -> List[str]:
-        return ["flux_norm"]
-
-    def required_variables(self) -> List[str]:
-        return []
-
-    def evaluate(self, input_variables, exposed_variables, calling_key):
-        # input_values = get_required_variable_values(self, input_variables)
-        # check whether the loaded file has detector configs as "top level" keys
-        det_conf = self.det_configs[calling_key]
-        if det_conf in self.template:
-            # in case the template files contains a tempalte for more than one
-            # detector config, access the template_dict for the current on
-            template_dict = self.template[det_conf]
-        else:
-            # default case: this flux component/tempalte is for single detector
-            # config only
-            template_dict = self.template
-        exposed_values = get_parameter_values(self, exposed_variables)
-        flux_norm = exposed_values["flux_norm"]
+    def evaluate(self, input_variables, parameters):
+        exposed_values = get_parameter_values(self, parameters)
+        template_norm = exposed_values["template_norm"]
 
         # TODO: compare template binning with configured one
-        if "template_fluctuation" in template_dict:
-            template_fluct = (template_dict["template_fluctuation"]*flux_norm)**2
+        if "template_fluctuation" in self.template:
+            template_fluct = (self.template["template_fluctuation"]*template_norm)**2
+            template_fluct = template_fluct.reshape(self.binning.hist_dims)
         else:
             template_fluct = None
-        return template_dict["template"] * flux_norm, template_fluct
+        return (self.template["template"] * template_norm).reshape(self.binning.hist_dims), template_fluct
     
 FACTORSTR_CLASS_MAPPING = {
     "PowerLawFlux": PowerLawFlux,

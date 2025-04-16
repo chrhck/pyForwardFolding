@@ -9,6 +9,7 @@ class AbstractBinning:
     """
     Abstract base class for binning strategies.
     """
+    @property
     def required_variables(self) -> List[str]:
         raise NotImplementedError
 
@@ -89,6 +90,7 @@ class RelaxedBinning(AbstractBinning):
             raise ValueError("Bin widths must be uniform")
         self.bin_width = bin_width[0]
 
+    @property
     def required_variables(self) -> List[str]:
         return [self.bin_variable]
 
@@ -147,6 +149,7 @@ class RectangularBinning(AbstractBinning):
             bin_edges.append(backend.linspace(*edges))
         return cls(bin_variables, bin_edges)
 
+    @property
     def required_variables(self) -> List[str]:
         return list(self.bin_variables)
 

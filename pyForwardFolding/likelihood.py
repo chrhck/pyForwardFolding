@@ -95,18 +95,18 @@ class PoissonLikelihood(AbstractLikelihood):
         return llh
 
 
-class Prior:
-    def evaluate(self, exposed_variables):
+class AbstractPrior:
+    def log_pdf(self, exposed_variables):
         raise NotImplementedError
 
 
-class GaussianPrior(Prior):
-    def __init__(self, factor, prior: Dict[str, Tuple[float, float]]):
-        self.prior = prior
-        self.factor = factor
+class GaussianUnivariatePrior(AbstractPrior):
+    def __init__(self, prior_params: Dict[str, Tuple[float, float]]):
+        self.prior_params = prior_params
 
-    def evaluate(self, exposed_variables):
+
+    def log_pdf(self, exposed_parameters):
         llh = 0
         for par, (mean, std) in self.prior.items():
-            llh += (exposed_variables[self.factor][par] - mean)**2 / std**2
+            llh += (exposed_parameters[par] - mean)**2 / std**2
         return llh

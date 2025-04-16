@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple, Union, Set
 
 import numpy as np
 
@@ -15,25 +15,27 @@ class Analysis:
     def __init__(self, expectations: Dict[str, BinnedExpectation]):
         self.expectations = expectations
 
-    def required_variables(self) -> set:
+    @property
+    def required_variables(self) -> Set[str]:
         """
         Get all variables required by any component in the analysis.
 
         Returns:
             set: A set containing all required variables.
         """
-        return set.union(*(comp.required_variables() for comp in self.expectations.values()))
+        return set.union(*(comp.required_variables for comp in self.expectations.values()))
 
-    def exposed_parameters(self) -> Dict[str, Any]:
+    @property
+    def exposed_parameters(self) -> Set[str]:
         """
         Get all parameters exposed by the analysis expectations.
 
         Returns:
             Dict[str, Any]: A merged dictionary of all exposed variables from all expectations.
         """
-        exposed = {}
+        exposed = set()
         for comp in self.expectations.values():
-            exposed.update(comp.exposed_parameters())
+            exposed |= comp.exposed_parameters
         return exposed
 
     def evaluate(

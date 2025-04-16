@@ -25,15 +25,30 @@ class ModelComponent:
         if len(factor_names) != len(set(factor_names)):
             raise ValueError("Factor names must be unique")
 
-    def exposed_parameters(self) -> Dict[str, List[str]]:
+    @property
+    def exposed_parameters(self) -> Set[str]:
         """
         Get the variables exposed by each factor in the model component.
 
         Returns:
             Dict[str, Dict[str, str]]: A dictionary mapping factor names to their exposed variables.
         """
-        return {factor.name: factor.parameter_mapping for factor in self.factors}
+        exposed = set()
+        for factor in self.factors:
+            exposed |= set(factor.exposed_parameters)
+        return exposed
+    
+    @property
+    def parameter_mapping(self) -> Dict[str, str]:
+        """
+        Get the mapping of parameters to their corresponding factor names.
 
+        Returns:
+            Dict[str, str]: A dictionary mapping parameter names to their factor names.
+        """
+        return {factor.name: factor.parameter_mapping for factor in self.factors}
+               
+    @property
     def required_variables(self) -> Set[str]:
         """
         Collect all variables required by any factor in the model component.

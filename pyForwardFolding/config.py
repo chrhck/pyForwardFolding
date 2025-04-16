@@ -27,12 +27,6 @@ def analysis_from_config(path: str) -> Analysis:
     ]
     factors_name_mapping = {f.name: f for f in factors}
 
-    hist_factors = [
-        AbstractBinnedFactor.construct_from(factor_conf)
-        for factor_conf in conf.get("hist_factors", [])
-    ]
-    hist_factors_name_mapping = {f.name: f for f in hist_factors}
-
     components = [
         ModelComponent(
             c["name"],
@@ -42,14 +36,19 @@ def analysis_from_config(path: str) -> Analysis:
     ]
     components_name_mapping = {c.name: c for c in components}
 
-    model_conf = conf["model"]
-    model = Model.from_pairs(
-        model_conf["name"],
-        [
-            (c["baseline_weight"], components_name_mapping[c["name"]])
-            for c in model_conf["components"]
-        ],
-    )
+    model_confs = conf["models"]
+
+    models = [
+        Model.from_pairs(
+            model_conf["name"],
+            [
+                (c["baseline_weight"], components_name_mapping[c["name"]])
+                for c in model_conf["components"]
+            ],
+        )
+        for model_conf in model_confs
+    ]
+    model_name_mapping = {m.name: m for m in models}
 
     dset_config = conf["datasets"]
     binned_expectations = {}
@@ -57,12 +56,19 @@ def analysis_from_config(path: str) -> Analysis:
     for dataset in dset_config:
         binning = AbstractBinning.construct_from(dataset["binning"])
         lifetime = dataset.get("lifetime", 1.0)
-        hist_factors = dataset.get("hist_factors", [])
+
+        hist_factors_configs = dataset.get("hist_factors", [])
+
+        hist_factors = [
+            AbstractBinnedFactor.construct_from(factor_conf, binning)
+            for factor_conf in hist_factors_configs
+        ]
+
         binned_expectations[dataset["name"]] = BinnedExpectation(
             dataset["name"],
-            model,
+            model_name_mapping[dataset["model"]],
             binning,
-            binned_factors={factor: hist_factors_name_mapping[factor] for factor in hist_factors},
+            binned_factors=hist_factors,
             lifetime=lifetime,
             )
 
