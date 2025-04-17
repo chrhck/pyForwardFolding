@@ -74,21 +74,22 @@ class PoissonLikelihood(AbstractLikelihood):
                 raise ValueError(f"No observed data for component '{comp_name}'")
             # Handle empty bins
             non_empty_expectation = comp_eval > 0
-            non_empty_observations = obs > 0
+            #non_empty_observations = obs > 0
             if empty_bins == "skip":
                 comp_eval_shift = backend.select(non_empty_expectation,
                                                  comp_eval,
-                                                 comp_eval + 1e-8)
-                obs_shift = backend.select(non_empty_observations,
-                                           obs,
-                                           obs + 1e-8)
+                                                 1E-8)
+                #obs_shift = backend.select(non_empty_observations,
+                #                           obs,
+                #                           obs + 1e-8)
                 llh_bins = backend.where_sum(non_empty_expectation,
-                                             -comp_eval + obs * backend.log(comp_eval_shift),
+                                             -comp_eval_shift + obs * backend.log(comp_eval_shift),
                                              0)
-                llh_sat = backend.where_sum(non_empty_observations,
-                                            -obs + obs * backend.log(obs_shift),
-                                            0)
-                llh += (llh_bins - llh_sat)
+                #llh_sat = backend.where_sum(non_empty_observations,
+                #                            -obs + obs * backend.log(obs_shift),
+                #                            0)
+                #llh += (llh_bins - llh_sat)
+                llh += llh_bins
             elif empty_bins == "throw":
                 if not np.all(non_empty_expectation):
                     raise ValueError(f"Empty bins in component '{comp_name}'")

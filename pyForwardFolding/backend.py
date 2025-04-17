@@ -118,6 +118,13 @@ class Backend:
         """
         raise NotImplementedError
 
+    def digitize(self, x: Any, bins: Any) -> Any:
+        """
+        Returns the indices of the bins to which each value in x belongs.
+        """
+        raise NotImplementedError
+
+
 class JAXBackend(Backend):
     """
     JAX implementation of the backend interface.
@@ -235,6 +242,9 @@ class JAXBackend(Backend):
     
     def arccos(self, x):
         return jnp.arccos(x)
+    
+    def digitize(self, x: jnp.ndarray, bins: jnp.ndarray) -> jnp.ndarray:
+        return jnp.digitize(x, bins, right=False)
 
 # Default backend instance
 backend = JAXBackend()

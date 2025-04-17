@@ -188,10 +188,17 @@ class ScipyMinimizer(AbstractMinimizer):
             bounds=self.bounds,
             jac=True,
             method="L-BFGS-B",
-            tol=1e-8,
+            tol=1E-8,
             options={"maxls": 50, }
             )
-        return result
+        
+        res_dict = restructure_args(
+            result.x,
+            self.llh.get_analysis().exposed_parameters,
+            self.fixed_pars
+        )
+
+        return result, res_dict, result.fun
 
 
 class MinuitMinimizer(AbstractMinimizer):
@@ -215,11 +222,14 @@ class MinuitMinimizer(AbstractMinimizer):
 
         self.func = backend.compile(self.wrapped_lh)
         self.grad = backend.compile(backend.grad(self.wrapped_lh))
+
+        names = [par_name for par_name in self.llh.get_analysis().exposed_parameters if par_name not in self.fixed_pars]
+
         self.minuit = iminuit.Minuit(
             self.func,
             self.seeds,
             grad=self.grad,
-            name=list(self.llh.get_analysis().exposed_parameters)
+            name=names
         )
 
         bound_list = [[lb, ub] for lb, ub in zip(self.bounds.lb, self.bounds.ub)]

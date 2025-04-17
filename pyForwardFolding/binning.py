@@ -9,6 +9,12 @@ class AbstractBinning:
     """
     Abstract base class for binning strategies.
     """
+
+    def __init__(self, bin_indices=None, mask=None):
+        self.bin_indices = bin_indices
+        self.mask = mask
+
+
     @property
     def required_variables(self) -> List[str]:
         raise NotImplementedError
@@ -62,9 +68,8 @@ class CustomBinning(AbstractBinning):
     Args:
         bin_indices (List[int]): Indices for the bins.
     """
-    def __init__(self, bin_indices: List[int]):
-        super().__init__()
-        self.bin_indices = bin_indices
+    def __init__(self, bin_indices: List[int], mask=None):
+        super().__init__(bin_indices, mask)
 
     def required_variables(self) -> List[str]:
         return []
@@ -79,8 +84,8 @@ class RelaxedBinning(AbstractBinning):
         bin_edges (List[float]): The edges of the bins.
         slope (float): The slope parameter for the tanh kernel.
     """
-    def __init__(self, bin_variable: str, bin_edges: List[float], slope: float):
-        super().__init__()
+    def __init__(self, bin_variable: str, bin_edges: List[float], slope: float, mask=None):
+        super().__init__(None, mask)
         self.bin_variable = bin_variable
         self.bin_edges = (backend.array(bin_edges), )
         self.slope = slope
@@ -132,11 +137,10 @@ class RectangularBinning(AbstractBinning):
         bin_edges (Tuple[List[float]]): The edges of the bins for each variable.
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
     """
-    def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices: List[Tuple[int]] = None):
-        super().__init__()
+    def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices: List[Tuple[int]] = None, mask=None):
+        super().__init__(bin_indices, mask)
         self.bin_variables = bin_variables
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
-        self.bin_indices = bin_indices
 
     @classmethod
     def from_pairs(cls, bin_vars_edges: List[Tuple[str, str, List[float]]]) -> "RectangularBinning":
@@ -157,11 +161,19 @@ class RectangularBinning(AbstractBinning):
         if len(set(len(bv) for bv in binning_variables)) != 1:
             raise ValueError("All binning variables must have the same length")
 
-        if not self.bin_indices:
+        if self.bin_indices is None:
             self.bin_indices = []
             for bv, edges in zip(binning_variables, self.bin_edges):
-                indices = backend.searchsorted(edges, bv, side="left") - 1
+                #indices = backend.searchsorted(edges, bv, side="left") - 1
+                indices = backend.digitize(bv, edges)
                 self.bin_indices.append(indices)
+
+        if self.mask is None:
+            self.mask = backend.zeros(binning_variables[0].shape, dtype=bool)
+            for bv, edges in zip(binning_variables, self.bin_edges):
+                self.mask |= (bv < edges[0]) | (bv >= edges[-1])
+
+               
 
     def build_histogram(
         self,
@@ -173,6 +185,12 @@ class RectangularBinning(AbstractBinning):
 
         indices_flat = backend.ravel_multi_index(tuple(self.bin_indices),
                                                  self.hist_dims)
+        
+        # Set weight of masked samples to 0
+        weights = backend.set_index(weights, self.mask, 0)
+
+        #print(binning_variables[0][weights == 0])
+
         output = backend.bincount(indices_flat,
                                   weights=weights,
                                   length=self.nbins)
