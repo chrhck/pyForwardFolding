@@ -46,10 +46,10 @@ models:
 datasets:
   - name: det1
     binning:
-      type: RectangularBinning
-      bin_vars_edges:
-        - ["log10_reco_energy", [2, 7, 31]]
-        - ["cos_reco_zenith",[-1, 1, 25]]
+      type: RelaxedBinning
+      bin_variable: "summary_stat"
+      bin_edges: [0, 1, 51]
+      slope: 0.001
     lifetime: 1.0
     model: "model"
 

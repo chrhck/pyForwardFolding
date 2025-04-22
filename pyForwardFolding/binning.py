@@ -34,14 +34,9 @@ class AbstractBinning:
         if binning_type == "CustomBinning":
             return CustomBinning(bin_indices=config["bin_indices"])
         elif binning_type == "RelaxedBinning":
-            return RelaxedBinning(
-                bin_variable=config["bin_variable"],
-                bin_edges=config["bin_edges"],
-                kernel_buffer=np.zeros(len(config["bin_edges"]) - 1),
-                slope=config["slope"],
-            )
+            return RelaxedBinning.construct_from(config)
         elif binning_type == "RectangularBinning":
-            return RectangularBinning.from_pairs(config["bin_vars_edges"])
+            return RectangularBinning.construct_from(config)
         else:
             raise ValueError(f"Unknown binning type: {binning_type}")
         
@@ -95,6 +90,16 @@ class RelaxedBinning(AbstractBinning):
             raise ValueError("Bin widths must be uniform")
         self.bin_width = bin_width[0]
 
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "RelaxedBinning":
+
+        bin_edges = backend.linspace(*config["bin_edges"])
+        return cls(
+            bin_variable=config["bin_variable"],
+            bin_edges=bin_edges,
+            slope=config["slope"],
+        )
+
     @property
     def required_variables(self) -> List[str]:
         return [self.bin_variable]
@@ -114,7 +119,6 @@ class RelaxedBinning(AbstractBinning):
             raise ValueError("RelaxedBinning only supports one binning variable")
 
         data = binning_variables[0]
-
 
         output = backend.zeros(self.hist_dims)
 
@@ -143,7 +147,8 @@ class RectangularBinning(AbstractBinning):
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
 
     @classmethod
-    def from_pairs(cls, bin_vars_edges: List[Tuple[str, str, List[float]]]) -> "RectangularBinning":
+    def construct_from(cls, config: Dict[str, Any]) -> "RectangularBinning":
+        bin_vars_edges = config["bin_vars_edges"]
         if len(bin_vars_edges) < 1:
             raise ValueError("At least one variable and its edges must be provided.")
         bin_edges = []
