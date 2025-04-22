@@ -32,7 +32,7 @@ where $M(X \mid \theta)$ is the differential flux model:
 M(X \mid \theta)=\frac{\partial^2 \Phi(X, \theta)}{\partial E \partial \Omega}
 ```
 
-A model can generally consist of multiple components, with $\theta = \{\theta_C\}_C$
+A model can generally consist of multiple components, with $`\theta = \{ \theta_C \}_C `$
 
 ```math
 M(X \mid \theta) = \sum_C m_C(X \mid \theta_C)
