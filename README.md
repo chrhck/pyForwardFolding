@@ -24,7 +24,7 @@ The weight encodes the instrument response of the detector and is defined such t
 
 $$
 R(X) = w \cdot M(X)
-$$,
+$$
 
 where $M(X \mid \theta)$ is the differential flux model:
 
@@ -43,6 +43,7 @@ For better composability, we can write a model component as a product (for examp
 $$
 m_C(X \mid \theta_C) = \prod_f F_{f, C}(X \mid \theta_f) ,
 $$
+
 where $f$ indexes the factors.
 
 Events (with index $i$) are binned according to their reconstructed quantities, where the expectation $\mu_A$ (weight) in bin A is given by:
@@ -68,6 +69,7 @@ w \to w \cdot S(X)
 $$
 
 or on a bin-by-bin level:
+
 $$
 \hat{\mu}_A(X, \hat{X}, \theta)  = S_A \cdot \mu_A(X, \hat{X}, \theta)   = S_A \cdot \sum_i^{N} I_{A}\left(\hat{X}_i \right) \cdot \sum_C m_C(X \mid \theta_C) \cdot w_i
 $$
