@@ -99,10 +99,10 @@ datasets:
         default: [1.0, 1.0, 1.0, -0.27, -0.042]
         split_values: [1.0, 1.0, 1.0, -0.27, -0.042]
         range: [[0.9, 1.1], [0.9, 1.1], [0.9, 1.1], [-0.84, 0.3], [-0.134, 0.05]]
-        gradient_pickle: "/home/chrhck/data/snowstorm_IC86_pass2_SnowStorm_v2_tracks.pickle"
+        gradient_pickle: "/home/chaack/data/snowstorm_IC86_pass2_SnowStorm_v2_tracks.pickle"
       - name: MuonTemplate
         type: ScaledTemplate
-        template_file: "/home/chrhck/data/Tracks_CorsikaMuon_Fullrange_drop_5lowEbins.pickle"
+        template_file: "/home/chaack/data/Tracks_CorsikaMuon_Fullrange_drop_5lowEbins.pickle"
         param_mapping:
           template_norm: "muon_template"
   - name: Cascades
@@ -121,10 +121,10 @@ datasets:
         default: [1.0, 1.0, 1.0, -0.27, -0.042]
         split_values: [1.0, 1.0, 1.0, -0.27, -0.042]
         range: [[0.9, 1.1], [0.9, 1.1], [0.9, 1.1], [-0.84, 0.3], [-0.134, 0.05]]
-        gradient_pickle: "/home/chrhck/data/snowstorm_IC86_pass2_SnowStorm_v2_cscd_cascade.pickle"
+        gradient_pickle: "/home/chaack/data/snowstorm_IC86_pass2_SnowStorm_v2_cscd_cascade.pickle"
       - name: MuonGunTemplateCascade
         type: ScaledTemplate
-        template_file: "/home/chrhck/data/cscd_muongun_cscd_cascade_KDE_15zen_manual_ssq.pickle"
+        template_file: "/home/chaack/data/cscd_muongun_cscd_cascade_KDE_15zen_manual_ssq.pickle"
         param_mapping:
           template_norm: "muongun_template"
       
@@ -144,9 +144,9 @@ datasets:
         default: [1.0, 1.0, 1.0, -0.27, -0.042]
         split_values: [1.0, 1.0, 1.0, -0.27, -0.042]
         range: [[0.9, 1.1], [0.9, 1.1], [0.9, 1.1], [-0.84, 0.3], [-0.134, 0.05]]
-        gradient_pickle: "/home/chrhck/data/snowstorm_IC86_pass2_SnowStorm_v2_cscd_muon.pickle"
+        gradient_pickle: "/home/chaack/data/snowstorm_IC86_pass2_SnowStorm_v2_cscd_muon.pickle"
       - name: MuonGunTemplateMuon
         type: ScaledTemplate
-        template_file: "/home/chrhck/data/cscd_muongun_cscd_muon_KDE_15zen_manual_ssq.pickle"
+        template_file: "/home/chaack/data/cscd_muongun_cscd_muon_KDE_15zen_manual_ssq.pickle"
         param_mapping:
           template_norm: "muongun_template"
