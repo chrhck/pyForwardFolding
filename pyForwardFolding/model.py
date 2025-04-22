@@ -1,5 +1,7 @@
-from typing import List, Dict, Set, Union, Tuple
+from typing import Dict, List, Set, Tuple, Union
+
 import numpy as np
+
 from .model_component import ModelComponent
 
 
@@ -41,6 +43,7 @@ class Model:
         component_list = [pair[1] for pair in components]
         return cls(name, component_list, baseline_weights)
 
+    @property
     def required_variables(self) -> Set[str]:
         """
         Get all variables required by any component in the model.
@@ -48,24 +51,33 @@ class Model:
         Returns:
             Set[str]: A set containing all required variables.
         """
-        return {var for component in self.components for var in component.required_variables()}
+        return {var for component in self.components for var in component.required_variables}
 
-    def exposed_parameters(self) -> Dict[str, List[str]]:
+    @property
+    def exposed_parameters(self) -> Set[str]:
         """
         Get all parameters exposed by the model's components.
 
         Returns:
             Dict[str, Dict[str, str]]: A merged dictionary of all exposed parameters from all components.
         """
-        exposed = {}
-        for component in self.components:
-            exposed.update(component.exposed_parameters())
-        return exposed
+
+        return {par for component in self.components for par in component.exposed_parameters}
+
+    @property
+    def parameter_mapping(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get the mapping of model parameters to their respective components.
+
+        Returns:
+            Dict[str, Dict[str, str]]: A dictionary mapping component names to their parameter names.
+        """
+        return {component.name: component.parameter_mapping for component in self.components}
 
     def evaluate(
         self,
         input_variables: Dict[str, Union[np.ndarray, float]],
-        parameter_values: Dict[str, Union[np.ndarray, float]],
+        parameter_values: Dict[str, Dict[str, Union[np.ndarray, float]]],
     ) -> np.ndarray:
         """
         Evaluate the model by computing the sum of all components.
@@ -80,12 +92,11 @@ class Model:
         Raises:
             ValueError: If any baseline weight is not found in the input variables.
         """
-       
+
         # Ensure all input variables have the same length
         input_var_lengths = [len(value) if isinstance(value, np.ndarray) else 1 for value in input_variables.values()]
         if not all(length == input_var_lengths[0] for length in input_var_lengths):
             raise ValueError("All input variables must have the same length")
-
         output = 0.
         for component, baseline_weight in zip(self.components, self.baseline_weights):
             # Get the baseline weight value

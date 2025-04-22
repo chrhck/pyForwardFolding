@@ -1,7 +1,8 @@
+from math import pi
 from typing import Any
-import jax.numpy as jnp
-from math import sqrt, pi, exp
 
+import jax.numpy as jnp
+import jax.scipy.special
 
 
 class Backend:
@@ -29,7 +30,7 @@ class Backend:
     def erf(self, a: Any) -> Any:
         raise NotImplementedError
     
-    def fasterf(self, a) -> Any:
+    def fasterf(self, a: Any) -> Any:
         raise NotImplementedError
 
     def gauss_pdf(self, x: Any, mu: Any, sigma: Any) -> Any:
@@ -41,10 +42,10 @@ class Backend:
     def uniform_pdf(self, x: Any, lo: Any, hi: Any) -> Any:
         raise NotImplementedError
 
-    def set_index(self, x: Any, index: Any, values: Any) -> None:
+    def set_index(self, x: Any, index: Any, values: Any) -> Any:
         raise NotImplementedError
     
-    def fill(self, x: Any, value: Any) -> None:
+    def fill(self, x: Any, value: Any) -> Any:
         raise NotImplementedError
 
     def histogram(self, x: Any, bins: Any, weights: Any) -> Any:
@@ -56,7 +57,7 @@ class Backend:
     def reshape(self, x: Any, shape: Any) -> Any:
         raise NotImplementedError
     
-    def set_index_add(self, x: Any, index: Any, values: Any) -> None:
+    def set_index_add(self, x: Any, index: Any, values: Any) -> Any:
         raise NotImplementedError
     
     def searchsorted(self, a: Any, v: Any, side: str = 'left') -> Any:
@@ -116,6 +117,13 @@ class Backend:
         Computes the hyperbolic tangent of x.
         """
         raise NotImplementedError
+
+    def digitize(self, x: Any, bins: Any) -> Any:
+        """
+        Returns the indices of the bins to which each value in x belongs.
+        """
+        raise NotImplementedError
+
 
 class JAXBackend(Backend):
     """
@@ -214,7 +222,29 @@ class JAXBackend(Backend):
     def tanh(self, x: jnp.ndarray) -> jnp.ndarray:
         return jnp.tanh(x)
 
+    def select(self, condition, x, y):
+        return jnp.where(condition, x, y)
+    
+    def gammaln(self, x):
+        return jax.scipy.special.gammaln(x)
 
+    def func_and_grad(self, func):
+        return jax.jit(jax.value_and_grad(func))
+    
+    def compile(self, func):
+        return jax.jit(func)
+    
+    def grad(self, func):
+        return jax.grad(func)
+    
+    def logspace(self, start, stop, num):
+        return jnp.logspace(start, stop, num)
+    
+    def arccos(self, x):
+        return jnp.arccos(x)
+    
+    def digitize(self, x: jnp.ndarray, bins: jnp.ndarray) -> jnp.ndarray:
+        return jnp.digitize(x, bins, right=False)
 
 # Default backend instance
 backend = JAXBackend()

@@ -15,7 +15,10 @@ classifiers = [
 dependencies = [
   "jax>=0.5",
   "pandas>=2.2",
-  "pyArrow>=19"
+  "pyArrow>=19",
+  "pyyaml>=6.0",
+  "iminuit>=2.31",
+
 ]
 description = "Your project description here."
 dynamic = ["version"]
@@ -27,14 +30,13 @@ requires-python = ">=3.10,<4"
 [project.optional-dependencies]
 checks = [
   "mypy==1.9.0",
-  "ruff>=0.3,<0.4",
+  "ruff>=0.11",
 ]
 docs = [
   "mkdocs-material>=9,<10",
 ]
 tests = [
   "coverage[toml]>=7,<8",
-  "httpx>=0.23,<1",
   "pytest>=7,<8",
   "pytest-mock>=3,<4",
 ]
@@ -71,6 +73,11 @@ features = [
 ]
 path = ".venv"
 python = "3.12"
+dependencies = [
+  "ipykernel",
+  "pandas",
+  "matplotlib"
+]
 
 [tool.hatch.envs.default.scripts]
 check = [
