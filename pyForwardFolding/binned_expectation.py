@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from .backend import backend
-from .binning import AbstractBinning, RectangularBinning
+from .binning import AbstractBinning
 from .factor import AbstractBinnedFactor
 from .model import Model
 

@@ -1,5 +1,7 @@
-from typing import Dict, Any, Type, Optional, Union, Tuple
+from typing import Any, Dict, Tuple
+
 import numpy as np
+
 from .backend import backend
 
 

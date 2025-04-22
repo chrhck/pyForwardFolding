@@ -30,7 +30,7 @@ class Backend:
     def erf(self, a: Any) -> Any:
         raise NotImplementedError
     
-    def fasterf(self, a) -> Any:
+    def fasterf(self, a: Any) -> Any:
         raise NotImplementedError
 
     def gauss_pdf(self, x: Any, mu: Any, sigma: Any) -> Any:
@@ -42,10 +42,10 @@ class Backend:
     def uniform_pdf(self, x: Any, lo: Any, hi: Any) -> Any:
         raise NotImplementedError
 
-    def set_index(self, x: Any, index: Any, values: Any) -> None:
+    def set_index(self, x: Any, index: Any, values: Any) -> Any:
         raise NotImplementedError
     
-    def fill(self, x: Any, value: Any) -> None:
+    def fill(self, x: Any, value: Any) -> Any:
         raise NotImplementedError
 
     def histogram(self, x: Any, bins: Any, weights: Any) -> Any:
@@ -57,7 +57,7 @@ class Backend:
     def reshape(self, x: Any, shape: Any) -> Any:
         raise NotImplementedError
     
-    def set_index_add(self, x: Any, index: Any, values: Any) -> None:
+    def set_index_add(self, x: Any, index: Any, values: Any) -> Any:
         raise NotImplementedError
     
     def searchsorted(self, a: Any, v: Any, side: str = 'left') -> Any:
