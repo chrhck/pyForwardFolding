@@ -21,20 +21,25 @@
 
 We have a collection of MC events, with true properties $X = (E, \ldots)$ , reconstructed quantities $\hat{X} = (\hat{E}, \ldots)$ and a weight $w$.
 The weight encodes the instrument response of the detector and is defined such that the rate $R$ in Hz is given by: 
+
 $$
 R(X) = w \cdot M(X)
 $$,
-where $M(X \mid \theta)$ is the differential flux model: 
+
+where $M(X \mid \theta)$ is the differential flux model:
+
 $$
 M(X \mid \theta)=\frac{\partial^2 \Phi(X, \theta)}{\partial E \partial \Omega}
 $$
 
 A model can generally consist of multiple components, with $\theta = \{\theta_C\}_C$
+
 $$
 M(X \mid \theta) = \sum_C m_C(X \mid \theta_C)
 $$
 
 For better composability, we can write a model component as a product (for example, a powerlaw with an exponential cutoff) of factors ($F$)
+
 $$
 m_C(X \mid \theta_C) = \prod_f F_{f, C}(X \mid \theta_f) ,
 $$
@@ -57,6 +62,7 @@ In general, models will have free parameters of interest $\theta$, the simplest 
 ### Detector Systematics
 
 Detector systematics $\hat{\nu}$, such as the detection efficiency, modify the instrument response and thus the weight $w$. They can either be parametrized on an event-by-event level:
+
 $$
 w \to w \cdot S(X)
 $$
@@ -84,6 +90,7 @@ $$
 $$
 
 Representing the per-event-systematics as model-factors:
+
 $$
 \hat{\mu}^D_A(X^D, \hat{X^D}, \theta)  ~= S^D_A \cdot \sum_i^{N^D} I^D_{A}\left(\hat{X}^D_i \right) \cdot \sum_C \prod_f F_{f, C}(X \mid \theta_f) \cdot w_i^D
 $$
