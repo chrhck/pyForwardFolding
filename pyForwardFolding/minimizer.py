@@ -189,7 +189,7 @@ class ScipyMinimizer(AbstractMinimizer):
             jac=True,
             method="L-BFGS-B",
             tol=1E-8,
-            options={"maxls": 50, }
+            options={"maxls": 50, "m": 15}
             )
         
         res_dict = restructure_args(
