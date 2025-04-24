@@ -182,6 +182,7 @@ class ScipyMinimizer(AbstractMinimizer):
         self.fmin_and_grad = backend.func_and_grad(self.wrapped_lh)
 
     def minimize(self):
+
         result = minimize(
             self.fmin_and_grad,
             self.seeds,
@@ -189,7 +190,7 @@ class ScipyMinimizer(AbstractMinimizer):
             jac=True,
             method="L-BFGS-B",
             tol=1E-8,
-            options={"maxls": 50, }
+            options={"maxls": 50, "m": 15}
             )
         
         res_dict = restructure_args(
@@ -236,7 +237,7 @@ class MinuitMinimizer(AbstractMinimizer):
         self.minuit.errordef = self.minuit.LIKELIHOOD
         self.minuit.limits = bound_list
         self.minuit.strategy = 1
-        self.minuit.tol = 1e-2
+        self.minuit.tol = 0.1
         self.minuit.print_level = 0
 
     def _build_message(self):

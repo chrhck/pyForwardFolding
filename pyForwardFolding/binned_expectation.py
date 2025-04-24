@@ -14,9 +14,9 @@ class BinnedExpectation:
 
     Args:
         name (str): Name of the BinnedExpectation.
-        model (AbstractFactor): The model used to calculate weights for each bin.
+        model (Model): The model used to calculate weights for each bin.
         binning (AbstractBinning): The binning used to create the histogram.
-        binned_factors (Optional[List[AbstractFactor]]): Factors to be added to the histogram.
+        binned_factors (Optional[List[AbstractBinnedFactor]]): Factors to be added to the histogram.
         lifetime (float): Lifetime of the binned expectation.
     """
     def __init__(self,
@@ -38,7 +38,7 @@ class BinnedExpectation:
         Get all variables required by the BinnedExpectation.
 
         Returns:
-            set: A union of the binning input variables and the model's required variables.
+            Set[str]: A union of the binning input variables and the model's required variables.
         """
         return set(self.binning.required_variables).union(self.model.required_variables)
 
@@ -48,7 +48,7 @@ class BinnedExpectation:
         Get parameters exposed by the BinnedExpectation.
 
         Returns:
-            Dict[str, List[str]]: Variables exposed by the underlying model.
+            Dict[str, List[str]]: Variables exposed by the underlying model and binned factors.
         """
         model_exposed = self.model.exposed_parameters
         bf_exposed = {par for factor in self.binned_factors for par in factor.exposed_parameters}
@@ -64,11 +64,13 @@ class BinnedExpectation:
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
-            input_variables (Dict[str, Union[np.ndarray, float]]): A collection of input variables.
-            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
+            input_variables (Dict[str, Union[np.ndarray, float]]): A dictionary of input variables, where keys are variable names and values are arrays or scalars.
+            parameter_values (Dict[str, Union[np.ndarray, float]]): A dictionary of parameter values, where keys are parameter names and values are arrays or scalars.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray]: The histogram weights and squared weights representing the binned expectation.
+            Tuple[np.ndarray, np.ndarray]: A tuple containing:
+                - The histogram weights (np.ndarray).
+                - The squared weights (np.ndarray) representing the binned expectation.
         """
         # Evaluate the model to get weights
         weights = self.model.evaluate(input_variables,

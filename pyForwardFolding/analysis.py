@@ -21,7 +21,7 @@ class Analysis:
         Get all variables required by any component in the analysis.
 
         Returns:
-            set: A set containing all required variables.
+            Set[str]: A set containing all required variables.
         """
         return set.union(*(comp.required_variables for comp in self.expectations.values()))
 
@@ -31,7 +31,7 @@ class Analysis:
         Get all parameters exposed by the analysis expectations.
 
         Returns:
-            Dict[str, Any]: A merged dictionary of all exposed variables from all expectations.
+            Set[str]: A set of all exposed parameters from all expectations.
         """
         exposed = set()
         for comp in self.expectations.values():
@@ -44,7 +44,7 @@ class Analysis:
         parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
-        Evaluate all expectations in the analysis using the provided BufferManager.
+        Evaluate all expectations in the analysis.
 
         Args:
             datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): A dictionary mapping component names to their input variables.
