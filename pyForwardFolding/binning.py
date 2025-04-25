@@ -170,7 +170,7 @@ class RectangularBinning(AbstractBinning):
             self.bin_indices = []
             for bv, edges in zip(binning_variables, self.bin_edges):
                 #indices = backend.searchsorted(edges, bv, side="left") - 1
-                indices = backend.digitize(bv, edges)
+                indices = backend.digitize(bv, edges) -1
                 self.bin_indices.append(indices)
 
         if self.mask is None:
