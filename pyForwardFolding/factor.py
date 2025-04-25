@@ -220,19 +220,19 @@ class DeltaGamma(AbstractFactor):
 
 
 
-    def __init__(self, name, reference_energy, param_mapping: Dict[str, str] = None):
+    def __init__(self, name, param_mapping: Dict[str, str] = None):
         super().__init__(name, param_mapping)
-        self.reference_energy = reference_energy
+        #self.reference_energy = reference_energy
 
         self.factor_parameters =  ["delta_gamma"]
-        self.req_vars = ["true_energy"]
+        self.req_vars = ["true_energy", "median_energy"]
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "DeltaGamma":
         param_mapping = config.get("param_mapping", None)
         return DeltaGamma(
                 name=config["name"],
-                reference_energy=config["reference_energy"],
+                #reference_energy=config["reference_energy"],
                 param_mapping=param_mapping,
         )
 
@@ -242,7 +242,8 @@ class DeltaGamma(AbstractFactor):
 
         delta_gamma = exposed_values["delta_gamma"]
         true_energy = input_values["true_energy"]
-        return backend.power(true_energy / self.reference_energy, -delta_gamma)
+        median_energy = input_values["median_energy"]
+        return backend.power(true_energy / median_energy, -delta_gamma)
 
 
 class ModelInterpolator(AbstractFactor):
