@@ -1,3 +1,4 @@
+import functools
 from typing import Any, Dict, List, Set, Tuple
 
 import iminuit
@@ -188,8 +189,8 @@ class ScipyMinimizer(AbstractMinimizer):
             bounds=self.bounds,
             jac=True,
             method="L-BFGS-B",
-            tol=1E-8,
-            options={"maxls": 50, "m": 15}
+            tol=1E-15,
+            options={"maxls": 70, "maxcor": 25}
             )
         
         res_dict = restructure_args(
@@ -199,6 +200,22 @@ class ScipyMinimizer(AbstractMinimizer):
         )
 
         return result, res_dict, result.fun
+
+
+def wrap_func_np_cache(func):
+
+    def wrapper(np_array):
+        hashable_array = tuple(np_array)
+        return cached_wrap(hashable_array)
+
+    @functools.lru_cache(maxsize=None)
+    def cached_wrap(hashable_arr):
+        arr = backend.array(hashable_arr)
+        return func(arr)
+    
+    return wrapper
+    
+
 
 
 class MinuitMinimizer(AbstractMinimizer):
@@ -220,8 +237,8 @@ class MinuitMinimizer(AbstractMinimizer):
             priors=priors,
             fixed_pars=fixed_pars)
 
-        self.func = backend.compile(self.wrapped_lh)
-        self.grad = backend.compile(backend.grad(self.wrapped_lh))
+        self.func = wrap_func_np_cache(backend.compile(self.wrapped_lh))
+        self.grad = wrap_func_np_cache(backend.compile(backend.grad(self.wrapped_lh)))
 
         names = [par_name for par_name in self.llh.get_analysis().exposed_parameters if par_name not in self.fixed_pars]
 
@@ -262,7 +279,7 @@ class MinuitMinimizer(AbstractMinimizer):
 
     def minimize(self):
         print("Starting Minimization")
-        self.minuit.migrad()
+        self.minuit.simplex().migrad()
         print("Finished Minimization")
         minimizer_info = {
             'success': self.minuit.valid,
