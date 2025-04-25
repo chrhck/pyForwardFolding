@@ -83,7 +83,7 @@ class PoissonLikelihood(AbstractLikelihood):
                 #                           obs,
                 #                           obs + 1e-8)
                 llh_bins = backend.where_sum(non_empty_expectation,
-                                             -comp_eval_shift + obs * backend.log(comp_eval_shift),
+                                             -comp_eval_shift + obs * backend.log(comp_eval_shift) - backend.gammaln(obs + 1),
                                              0)
                 #llh_sat = backend.where_sum(non_empty_observations,
                 #                            -obs + obs * backend.log(obs_shift),
