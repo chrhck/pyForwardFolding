@@ -245,6 +245,30 @@ class JAXBackend(Backend):
     
     def digitize(self, x: jnp.ndarray, bins: jnp.ndarray) -> jnp.ndarray:
         return jnp.digitize(x, bins, right=False)
+    
+    def arg_weighted_quantile(self, x, weights, quantile):
+        if not (0 <= quantile <= 1):
+            raise ValueError("quantile must have a value between 0 and 1")
+
+        sorted_indices = jnp.argsort(x)
+
+        sorted_weightes = weights[sorted_indices]
+        cumul_weights = jnp.cumsum(sorted_weightes) / jnp.sum(weights)
+        quantile_idx = jnp.searchsorted(cumul_weights, quantile)
+
+        quantile_idx = jnp.clip(quantile_idx, 0, len(x) - 1)
+
+        return sorted_indices[quantile_idx]
+    
+    
+    def weighted_quantile(self, x, weights, quantile):
+        return x[self.arg_weighted_quantile(x, weights, quantile)]
+    
+    
+    def weighted_median(self, x, weights):
+        return self.weighted_quantile(x, weights, 0.5)
+
+
 
 # Default backend instance
 backend = JAXBackend()
