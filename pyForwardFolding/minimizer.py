@@ -4,7 +4,7 @@ import iminuit
 from scipy.optimize import Bounds, minimize
 
 from .backend import backend
-from .likelihood import AbstractLikelihood, AbstractPrior
+from .likelihood import AbstractLikelihood, AbstractPrior, GaussianUnivariatePrior
 
 
 def flat_index_dict_mapping(exp_vars: Set[str], fixed_params: Dict[str, Any] = None) -> Dict[str, Dict[str, int]]:
@@ -140,7 +140,8 @@ class AbstractMinimizer:
         self.llh = llh
         self.obs = obs
         self.dataset = dataset
-        self.priors = priors
+        self.priors = []
+        self.priors.append(GaussianUnivariatePrior(priors))
         self.fixed_pars = fixed_pars
 
         exposed_vars = self.llh.get_analysis().exposed_parameters
@@ -153,7 +154,7 @@ class AbstractMinimizer:
         self.bounds = Bounds(bounds_lower, bounds_upper)
         self.seeds = seeds_list
 
-        self.wrapped_lh = WrappedLLH(llh, obs, dataset, fixed_pars, priors)
+        self.wrapped_lh = WrappedLLH(llh, obs, dataset, fixed_pars, self.priors)
 
 
     def minimize(self):
