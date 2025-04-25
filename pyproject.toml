@@ -80,7 +80,9 @@ dependencies = [
   "matplotlib",
   "seaborn",
   "flax",
-  "optax"
+  "optax",
+  "tqdm",
+  "ipywidgets"
 ]
 
 [tool.hatch.envs.default.scripts]

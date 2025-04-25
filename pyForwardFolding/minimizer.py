@@ -169,7 +169,8 @@ class ScipyMinimizer(AbstractMinimizer):
                  bounds: Dict[str, Dict[str, Tuple[float, float]]],
                  seeds: Dict[str, Dict[str, float]],
                  priors: Dict[str, Dict[str, Tuple[float, float]]] = {},
-                 fixed_pars: Dict[str, Dict[str, float]] = {}):
+                 fixed_pars: Dict[str, Dict[str, float]] = {},
+                 tol: float = 1E-10):
         
         super().__init__(
             llh=llh,
@@ -181,6 +182,7 @@ class ScipyMinimizer(AbstractMinimizer):
             fixed_pars=fixed_pars)
         
         self.fmin_and_grad = backend.func_and_grad(self.wrapped_lh)
+        self.tol = tol
 
     def minimize(self):
         result = minimize(
@@ -189,8 +191,8 @@ class ScipyMinimizer(AbstractMinimizer):
             bounds=self.bounds,
             jac=True,
             method="L-BFGS-B",
-            tol=1E-15,
-            options={"maxls": 70, "maxcor": 25}
+            tol=self.tol,
+            options={"maxls": 50, "maxcor": 25}
             )
         
         res_dict = restructure_args(
