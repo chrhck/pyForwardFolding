@@ -108,7 +108,7 @@ class WrappedLLH:
                                           self.datasets,
                                           restructured_args)
         for p in self.prior:
-            binned_llh += p.evaluate(restructured_args)
+            binned_llh += p.log_pdf(restructured_args)
         return binned_llh
 
 
