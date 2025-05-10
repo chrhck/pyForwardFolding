@@ -88,8 +88,8 @@ datasets:
     binning:
       type: RectangularBinning
       bin_vars_edges:
-        - ["log10_reco_energy", [2.5,7,46]]
-        - ["cos_reco_zenith", [-1, 0.0872, 34]]
+        - ["log10_reco_energy", "linear", [2.5,7,46]]
+        - ["cos_reco_zenith", "linear", [-1, 0.0872, 34]]
     hist_factors:
       - name: SnowStormSystematicsNT
         type: SnowStormGradient
@@ -110,8 +110,9 @@ datasets:
     binning:
       type: RectangularBinning
       bin_vars_edges:
-        - ["log10_reco_energy",  [2.8,7,22]]
-        - ["cos_reco_zenith",  [-1, 1, 16]]
+        - ["log10_reco_energy", "linear", [2.8,7,22]]
+        - ["cos_reco_zenith", "array", [-1., 0.2, 0.6, 1.]]
+        #- ["cos_reco_zenith", "linear", [-1, 1, 16]]
     hist_factors: 
       - name: SnowStormSystematicsCasc
         type: SnowStormGradient
@@ -133,8 +134,8 @@ datasets:
     binning:
       type: RectangularBinning
       bin_vars_edges:
-        - ["log10_reco_energy",  [2.6, 4.8, 2]]
-        - ["cos_reco_zenith",  [-1, 1, 2]]
+        - ["log10_reco_energy", "linear", [2.6, 4.8, 2]]
+        - ["cos_reco_zenith", "linear", [-1, 1, 2]]
     hist_factors:
       - name: SnowStormSystematicsCascMu
         type: SnowStormGradient
