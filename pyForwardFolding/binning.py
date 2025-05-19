@@ -153,9 +153,14 @@ class RectangularBinning(AbstractBinning):
             raise ValueError("At least one variable and its edges must be provided.")
         bin_edges = []
         bin_variables = []
-        for var, edges in bin_vars_edges:
+        for var, bin_type, edges in bin_vars_edges:
             bin_variables.append(var)
-            bin_edges.append(backend.linspace(*edges))
+            if bin_type == "linear":
+                bin_edges.append(backend.linspace(*edges))
+            elif bin_type == "array":
+                bin_edges.append(backend.array(edges))
+            else:
+                raise ValueError(f"Unknown binning type: {bin_type}")
         return cls(bin_variables, bin_edges)
 
     @property

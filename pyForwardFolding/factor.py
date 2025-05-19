@@ -218,13 +218,11 @@ class DeltaGamma(AbstractFactor):
         reference_energy (float): Reference energy for scaling.
     """
 
-
-
-    def __init__(self, name, param_mapping: Dict[str, str] = None):
+    def __init__(self, name, param_mapping: Dict[str, str] = None, reference_energy: float = 1.0):
         super().__init__(name, param_mapping)
-        #self.reference_energy = reference_energy
+        self.reference_energy = reference_energy
 
-        self.factor_parameters =  ["delta_gamma"]
+        self.factor_parameters = ["delta_gamma"]
         self.req_vars = ["true_energy", "median_energy"]
 
     @classmethod
@@ -232,7 +230,7 @@ class DeltaGamma(AbstractFactor):
         param_mapping = config.get("param_mapping", None)
         return DeltaGamma(
                 name=config["name"],
-                #reference_energy=config["reference_energy"],
+                reference_energy=config["reference_energy"],
                 param_mapping=param_mapping,
         )
 
@@ -242,8 +240,8 @@ class DeltaGamma(AbstractFactor):
 
         delta_gamma = exposed_values["delta_gamma"]
         true_energy = input_values["true_energy"]
-        median_energy = input_values["median_energy"]
-        return backend.power(true_energy / median_energy, -delta_gamma)
+        # median_energy = input_values["median_energy"]
+        return backend.power(true_energy / self.reference_energy, -delta_gamma)
 
 
 class ModelInterpolator(AbstractFactor):
@@ -282,7 +280,7 @@ class ModelInterpolator(AbstractFactor):
         baseline_weight = input_values[self.base_key]
         alternative_weight = input_values[self.alt_key]
         lambda_int = exposed_values["lambda_int"]
-        return lambda_int + (1-lambda_int)*alternative_weight/baseline_weight
+        return (1-lambda_int) + lambda_int*alternative_weight/baseline_weight
 
 
 class GradientReweight(AbstractFactor):
