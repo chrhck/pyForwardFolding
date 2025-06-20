@@ -280,6 +280,10 @@ class ModelInterpolator(AbstractFactor):
         baseline_weight = input_values[self.base_key]
         alternative_weight = input_values[self.alt_key]
         lambda_int = exposed_values["lambda_int"]
+
+        if np.any(baseline_weight==0):
+            raise ValueError("Baseline weights for ModelInterpolator contain at least one 0. Remove those events from the input.")
+
         return (1-lambda_int) + lambda_int*alternative_weight/baseline_weight
 
 
