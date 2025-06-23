@@ -281,10 +281,25 @@ class ModelInterpolator(AbstractFactor):
         alternative_weight = input_values[self.alt_key]
         lambda_int = exposed_values["lambda_int"]
 
-        if np.any(baseline_weight==0):
-            raise ValueError("Baseline weights for ModelInterpolator contain at least one 0. Remove those events from the input.")
 
-        return (1-lambda_int) + lambda_int*alternative_weight/baseline_weight
+        # If baseline weight is 0 also return 1
+        sanitized_baseline_weight = backend.where(
+            baseline_weight == 0,
+            1,
+            baseline_weight)
+
+        log_sanitized_baseline_weight = backend.log(sanitized_baseline_weight)
+        log_alternative_weight = backend.log(alternative_weight)
+
+
+        result = backend.where(
+             baseline_weight == 0,
+             1,
+             (1-lambda_int) + lambda_int* backend.exp(log_alternative_weight - log_sanitized_baseline_weight)
+        )
+        
+
+        return result
 
 
 class GradientReweight(AbstractFactor):

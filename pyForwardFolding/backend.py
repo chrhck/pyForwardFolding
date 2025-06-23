@@ -123,6 +123,18 @@ class Backend:
         Returns the indices of the bins to which each value in x belongs.
         """
         raise NotImplementedError
+    
+    def any(self, x: Any) -> Any:
+        """
+        Returns True if any element in x is True
+        """
+        raise NotImplementedError
+    
+    def where(self, cond:Any, x:Any, y:Any) -> Any:
+        """
+        Depending on cond return value from x or y
+        """
+    
 
 
 class JAXBackend(Backend):
@@ -267,7 +279,12 @@ class JAXBackend(Backend):
     
     def weighted_median(self, x, weights):
         return self.weighted_quantile(x, weights, 0.5)
+    
+    def any(self, x):
+        return jnp.any(x)
 
+    def where(self, cond, x, y):
+        return jnp.where(cond, x, y)
 
 
 # Default backend instance
