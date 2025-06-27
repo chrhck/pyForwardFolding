@@ -8,6 +8,38 @@ from .model import Model
 from .model_component import ModelComponent
 
 
+def _load_config(path: str) -> dict:
+    with open(path, "r") as file:
+        return yaml.safe_load(file)
+
+
+def _build_factors(conf: dict) -> dict:
+    factors = [AbstractFactor.construct_from(f) for f in conf["factors"]]
+    return {f.name: f for f in factors}
+
+
+def _build_components(conf: dict, factors: dict) -> dict:
+    components = [
+        ModelComponent(
+            c["name"],
+            [factors[fname] for fname in c["factors"]],
+        )
+        for c in conf["components"]
+    ]
+    return {c.name: c for c in components}
+
+
+def _build_models(conf: dict, components: dict) -> dict:
+    models = [
+        Model.from_pairs(
+            m["name"],
+            [(c["baseline_weight"], components[c["name"]]) for c in m["components"]],
+        )
+        for m in conf["models"]
+    ]
+    return {m.name: m for m in models}
+
+
 def analysis_from_config(path: str) -> Analysis:
     """
     Load an analysis configuration from a YAML file.
@@ -18,59 +50,48 @@ def analysis_from_config(path: str) -> Analysis:
     Returns:
         Analysis: The constructed analysis object.
     """
-    with open(path, "r") as file:
-        conf = yaml.safe_load(file)
+    conf = _load_config(path)
+    factors = _build_factors(conf)
+    components = _build_components(conf, factors)
+    models = _build_models(conf, components)
 
-    factors = [
-        AbstractFactor.construct_from(factor_conf)
-        for factor_conf in conf["factors"]
-    ]
-    factors_name_mapping = {f.name: f for f in factors}
-
-    components = [
-        ModelComponent(
-            c["name"],
-            [factors_name_mapping[factor_name] for factor_name in c["factors"]],
-        )
-        for c in conf["components"]
-    ]
-    components_name_mapping = {c.name: c for c in components}
-
-    model_confs = conf["models"]
-
-    models = [
-        Model.from_pairs(
-            model_conf["name"],
-            [
-                (c["baseline_weight"], components_name_mapping[c["name"]])
-                for c in model_conf["components"]
-            ],
-        )
-        for model_conf in model_confs
-    ]
-    model_name_mapping = {m.name: m for m in models}
-
-    dset_config = conf["datasets"]
     binned_expectations = {}
 
-    for dataset in dset_config:
+    for dataset in conf["datasets"]:
         binning = AbstractBinning.construct_from(dataset["binning"])
         lifetime = dataset.get("lifetime", 1.0)
-
-        hist_factors_configs = dataset.get("hist_factors", [])
-
         hist_factors = [
-            AbstractBinnedFactor.construct_from(factor_conf, binning)
-            for factor_conf in hist_factors_configs
+            AbstractBinnedFactor.construct_from(f, binning)
+            for f in dataset.get("hist_factors", [])
         ]
 
         binned_expectations[dataset["name"]] = BinnedExpectation(
-            dataset["name"],
-            model_name_mapping[dataset["model"]],
-            binning,
+            name=dataset["name"],
+            model=models[dataset["model"]],
+            binning=binning,
             binned_factors=hist_factors,
             lifetime=lifetime,
-            )
+        )
 
-    ana = Analysis(binned_expectations)
-    return ana
+    return Analysis(binned_expectations)
+
+
+def models_from_config(path: str) -> dict:
+    """
+    Load models per dataset from a YAML file.
+
+    Args:
+        path (str): Path to the YAML configuration file.
+
+    Returns:
+        dict: model for each dataset.
+    """
+    conf = _load_config(path)
+    factors = _build_factors(conf)
+    components = _build_components(conf, factors)
+    models = _build_models(conf, components)
+
+    return {
+        dataset["name"]: models[dataset["model"]]
+        for dataset in conf["datasets"]
+    }
