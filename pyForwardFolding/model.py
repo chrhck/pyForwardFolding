@@ -77,7 +77,7 @@ class Model:
     def evaluate(
         self,
         input_variables: Dict[str, Union[np.ndarray, float]],
-        parameter_values: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> np.ndarray:
         """
         Evaluate the model by computing the sum of all components.
@@ -119,15 +119,15 @@ class Model:
     def evaluate_per_component(
                     self,
         input_variables: Dict[str, Union[np.ndarray, float]],
-        parameter_values: Dict[str, Dict[str, Union[np.ndarray, float]]],
-    ) -> np.ndarray:
+        parameter_values: Dict[str, Union[np.ndarray, float]],
+    ) -> Dict[str, Union[np.ndarray, float]]:
         """
         Evaluate each component of the model individually.
         Args:
             input_variables (Dict[str, Union[np.ndarray, float]]): Input variables for model evaluation.
             parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
         Returns:
-            np.ndarray: The modified `output` containing the sum of all components.
+            Dict[str, Union[np.ndarray, float]]: A dictionary containing evaluation results for each component.
         Raises:
             ValueError: If any baseline weight is not found in the input variables.
         """
