@@ -77,7 +77,7 @@ class Model:
     def evaluate(
         self,
         input_variables: Dict[str, Union[np.ndarray, float]],
-        parameter_values: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> np.ndarray:
         """
         Evaluate the model by computing the sum of all components.
@@ -112,5 +112,44 @@ class Model:
 
             # Accumulate the result into the output
             output += comp_eval
+
+        return output
+
+
+    def evaluate_per_component(
+                    self,
+        input_variables: Dict[str, Union[np.ndarray, float]],
+        parameter_values: Dict[str, Union[np.ndarray, float]],
+    ) -> Dict[str, Union[np.ndarray, float]]:
+        """
+        Evaluate each component of the model individually.
+        Args:
+            input_variables (Dict[str, Union[np.ndarray, float]]): Input variables for model evaluation.
+            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
+        Returns:
+            Dict[str, Union[np.ndarray, float]]: A dictionary containing evaluation results for each component.
+        Raises:
+            ValueError: If any baseline weight is not found in the input variables.
+        """
+
+        # Ensure all input variables have the same length
+        input_var_lengths = [len(value) if isinstance(value, np.ndarray) else 1 for value in input_variables.values()]
+        if not all(length == input_var_lengths[0] for length in input_var_lengths):
+            raise ValueError("All input variables must have the same length")
+        output = {}
+        for component, baseline_weight in zip(self.components, self.baseline_weights):
+            # Get the baseline weight value
+            baseline_weight_value = input_variables.get(baseline_weight, None)
+            if baseline_weight_value is None:
+                raise ValueError(f"Baseline weight '{baseline_weight}' not found in input variables")
+
+            # Initialize the component buffer with the baseline weight value
+            comp_eval = baseline_weight_value
+
+            # Evaluate the component
+            comp_eval *= component.evaluate(input_variables, parameter_values)
+
+            # Accumulate the result into the output
+            output[component.name] = comp_eval
 
         return output
