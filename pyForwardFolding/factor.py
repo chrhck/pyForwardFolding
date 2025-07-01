@@ -623,6 +623,8 @@ FACTORSTR_CLASS_MAPPING = {
     "GradientReweight": GradientReweight,
     "ModelInterpolator": ModelInterpolator,
     "VetoThreshold": VetoThreshold,
+    "SoftCut": SoftCut,
     "SnowStormGradient": SnowStormGradient,
     "ScaledTemplate": ScaledTemplate,
+
 }
