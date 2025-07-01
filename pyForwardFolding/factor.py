@@ -435,6 +435,7 @@ class SoftCut(AbstractFactor):
         return SoftCut(
                 name=config["name"],
                 cut_variable=config["cut_variable"],
+                slope=config["slope"],
                 param_mapping=param_mapping,
         )
     
