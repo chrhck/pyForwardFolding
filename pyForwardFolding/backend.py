@@ -1,6 +1,7 @@
 from math import pi
 from typing import Any
 
+import jax.nn
 import jax.numpy as jnp
 import jax.scipy.special
 
@@ -133,6 +134,11 @@ class Backend:
     def where(self, cond:Any, x:Any, y:Any) -> Any:
         """
         Depending on cond return value from x or y
+        """
+
+    def sigmoid(self, x:Any) -> Any:
+        """
+        Sigmoid function
         """
     
 
@@ -286,6 +292,9 @@ class JAXBackend(Backend):
     def where(self, cond, x, y):
         return jnp.where(cond, x, y)
 
+
+    def sigmoid(self, x):
+        return jax.nn.sigmoid(x)
 
 # Default backend instance
 backend = JAXBackend()

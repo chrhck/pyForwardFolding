@@ -415,6 +415,40 @@ class VetoThreshold(AbstractFactor):
         # atm. weights are multiplied by passing fraction
         return reweight
 
+
+class SoftCut(AbstractFactor):
+    """Factor for a soft cut on a specific variable"""
+
+
+    def __init__(self, name: str, cut_variable:str, slope:float, param_mapping: Dict[str, str] = None):
+        super().__init__(name, param_mapping)
+
+        self.cut_variable = cut_variable
+        self.slope = slope
+        self.factor_parameters = ["soft_cut"]
+        self.req_vars = [self.cut_variable]
+
+
+    @classmethod
+    def construct_from(cls, config: Dict[str, Any]) -> "SoftCut":
+        param_mapping = config.get("param_mapping", None)
+        return SoftCut(
+                name=config["name"],
+                cut_variable=config["cut_variable"],
+                param_mapping=param_mapping,
+        )
+    
+    def evaluate(self, input_variables, parameters):
+        input_values = get_required_variable_values(self, input_variables)
+        exposed_values = get_parameter_values(self, parameters)
+        
+        cut_var = input_values[self.cut_variable]
+        cut_val = exposed_values["soft_cut"]
+
+                
+        return backend.sigmoid(self.slope*(cut_var - cut_val))
+
+
 class AbstractBinnedFactor(AbstractFactor):
     """
     Abstract base class for factors that contribute to a binned expectation.
