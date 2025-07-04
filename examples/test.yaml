@@ -11,6 +11,10 @@ factors:
     type: "FluxNorm"
     param_mapping:
       flux_norm: "atmo_norm"
+  - name: "muon_norm"
+    type: "FluxNorm"
+    param_mapping:
+      flux_norm: "muon_norm"
   - name: delta_gamma
     type: "DeltaGamma"
     reference_energy: 2617.3148996675773
@@ -34,6 +38,8 @@ components:
     factors: ["powerlaw", "snowstorm_escale", "snowstorm_esmear"]
   - name: "atmo"
     factors: ["atmo_norm", "delta_gamma", "snowstorm_escale", "snowstorm_esmear"]
+  - name: "muons"
+    factors: ["muon_norm", "snowstorm_escale", "snowstorm_esmear"]
 
 models:
   - name: "model"
@@ -43,7 +49,12 @@ models:
     - name: "atmo"
       baseline_weight: "conv_weight"
 
-datasets:
+  - name: "mock_muon_model"
+    components:
+    - name: "muons"
+      baseline_weight: "muon_weight"
+
+histograms:
   - name: det1
     binning:
       type: RectangularBinning
@@ -51,13 +62,5 @@ datasets:
         - ["log10_reco_energy", "linear", [2, 7, 31]]
         - ["cos_reco_zenith", "linear", [-1, 1, 25]]
     lifetime: 1.0
-    model: "model"
+    models: [["model","dataset1"], ["mock_muon_model", "dataset2"]]
 
-
-
-
-
-
-
-
-    

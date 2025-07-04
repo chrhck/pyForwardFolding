@@ -57,17 +57,23 @@ def analysis_from_config(path: str) -> Analysis:
 
     binned_expectations = {}
 
-    for dataset in conf["datasets"]:
-        binning = AbstractBinning.construct_from(dataset["binning"])
-        lifetime = dataset.get("lifetime", 1.0)
+    for hist_config in conf["histograms"]:
+        binning = AbstractBinning.construct_from(hist_config["binning"])
+        lifetime = hist_config.get("lifetime", 1.0)
         hist_factors = [
             AbstractBinnedFactor.construct_from(f, binning)
-            for f in dataset.get("hist_factors", [])
+            for f in hist_config.get("hist_factors", [])
         ]
 
-        binned_expectations[dataset["name"]] = BinnedExpectation(
-            name=dataset["name"],
-            model=models[dataset["model"]],
+        dskey_model_name_pairs = hist_config["models"]
+        dskey_model_pairs = [
+            (dskey, models[model_name])
+            for model_name, dskey in dskey_model_name_pairs
+        ]
+
+        binned_expectations[hist_config["name"]] = BinnedExpectation(
+            name=hist_config["name"],
+            dskey_model_pairs=dskey_model_pairs,
             binning=binning,
             binned_factors=hist_factors,
             lifetime=lifetime,

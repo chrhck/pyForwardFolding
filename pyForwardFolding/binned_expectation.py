@@ -14,20 +14,21 @@ class BinnedExpectation:
 
     Args:
         name (str): Name of the BinnedExpectation.
-        model (Model): The model used to calculate weights for each bin.
+        model_dskey_pairs (List[Tuple[str, Model]]): List of tuples where each tuple contains a dataset key and a model.
         binning (AbstractBinning): The binning used to create the histogram.
         binned_factors (Optional[List[AbstractBinnedFactor]]): Factors to be added to the histogram.
         lifetime (float): Lifetime of the binned expectation.
     """
     def __init__(self,
                  name: str,
-                 model: Model,
+                 dskey_model_pairs: List[Tuple[str, Model]],
                  binning: AbstractBinning,
                  binned_factors: Optional[List[AbstractBinnedFactor]] = None,
                  lifetime: float = 1.0,
                 ):
         self.name = name
-        self.model = model
+        self.dskey_model_pairs = dskey_model_pairs
+        self.models = [model for _, model in dskey_model_pairs]
         self.binning = binning
         self.binned_factors = binned_factors if binned_factors is not None else []
         self.lifetime = lifetime
@@ -40,7 +41,12 @@ class BinnedExpectation:
         Returns:
             Set[str]: A union of the binning input variables and the model's required variables.
         """
-        return set(self.binning.required_variables).union(self.model.required_variables)
+
+        model_required_vars = set()
+        for model in self.models:
+            model_required_vars.update(model.required_variables)
+
+        return set(self.binning.required_variables).union(model_required_vars)
 
     @property
     def exposed_parameters(self) -> Dict[str, List[str]]:
@@ -50,21 +56,26 @@ class BinnedExpectation:
         Returns:
             Dict[str, List[str]]: Variables exposed by the underlying model and binned factors.
         """
-        model_exposed = self.model.exposed_parameters
+
+        model_exposed = set()
+        
+        for model in self.models:
+            model_exposed.update(model.exposed_parameters)
+
         bf_exposed = {par for factor in self.binned_factors for par in factor.exposed_parameters}
         
         return model_exposed | bf_exposed
 
     def evaluate(
         self,
-        input_variables: Dict[str, Union[np.ndarray, float]],
+        datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
         parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
-            input_variables (Dict[str, Union[np.ndarray, float]]): A dictionary of input variables, where keys are variable names and values are arrays or scalars.
+            datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
             parameter_values (Dict[str, Union[np.ndarray, float]]): A dictionary of parameter values, where keys are parameter names and values are arrays or scalars.
 
         Returns:
@@ -72,22 +83,33 @@ class BinnedExpectation:
                 - The histogram weights (np.ndarray).
                 - The squared weights (np.ndarray) representing the binned expectation.
         """
-        # Evaluate the model to get weights
-        weights = self.model.evaluate(input_variables,
-                                      parameter_values,)
-        weight_sq = backend.power(weights, 2)
-        # Extract binning variables
-        binning_variables = tuple(input_variables[var] for var in self.binning.required_variables)
 
-        # Build histograms
-        hist = self.binning.build_histogram(
-            weights,
-            binning_variables
-            )*self.lifetime
-        hist_ssq = self.binning.build_histogram(
-            weight_sq,
-            binning_variables
-            )*self.lifetime**2
+        hist = 0
+        hist_ssq = 0
+
+        for model_dskey, model in self.dskey_model_pairs:
+            if model_dskey not in datasets:
+                raise ValueError(f"Dataset '{model_dskey}' not found in provided datasets.")
+            input_variables = datasets[model_dskey]
+
+            # Evaluate the model to get weights
+            weights = model.evaluate(input_variables,
+                                     parameter_values,)
+            weight_sq = backend.power(weights, 2)
+            # Extract binning variables
+            binning_variables = tuple(input_variables[var] for var in self.binning.required_variables)
+
+            # Build histograms
+            hist += self.binning.build_histogram(
+                model_dskey,
+                weights,
+                binning_variables
+                )*self.lifetime
+            hist_ssq += self.binning.build_histogram(
+                model_dskey,
+                weight_sq,
+                binning_variables
+                )*self.lifetime**2
 
         # Add contributions from binned factors
         for factor in self.binned_factors:

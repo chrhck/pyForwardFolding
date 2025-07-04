@@ -59,14 +59,10 @@ class Analysis:
         output_ssq_dict = {}
 
         for comp_name, comp in self.expectations.items():
-            # Get input variables for the component
-            input_vars = datasets.get(comp_name)
-            if input_vars is None:
-                raise ValueError(f"No input variables found for component '{comp_name}'")
-
+           
             # Evaluate the component
             hist, hist_ssq = comp.evaluate(
-                input_vars,
+                datasets,
                 parameter_values,
             )
 

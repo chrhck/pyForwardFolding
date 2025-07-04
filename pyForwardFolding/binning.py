@@ -10,9 +10,13 @@ class AbstractBinning:
     Abstract base class for binning strategies.
     """
 
-    def __init__(self, bin_indices=None, mask=None):
-        self.bin_indices = bin_indices
-        self.mask = mask
+    def __init__(self, bin_indices_dict=None, mask_dict=None):
+        if bin_indices_dict is None:
+            bin_indices_dict = {}
+        if mask_dict is None:
+            mask_dict = {}
+        self.bin_indices_dict = bin_indices_dict
+        self.mask_dict = mask_dict
 
 
     @property
@@ -63,8 +67,8 @@ class CustomBinning(AbstractBinning):
     Args:
         bin_indices (List[int]): Indices for the bins.
     """
-    def __init__(self, bin_indices: List[int], mask=None):
-        super().__init__(bin_indices, mask)
+    def __init__(self, bin_indices_dict: Dict[str, List[int]], mask_dict=None):
+        super().__init__(bin_indices_dict, mask_dict)
 
     def required_variables(self) -> List[str]:
         return []
@@ -80,6 +84,7 @@ class RelaxedBinning(AbstractBinning):
         slope (float): The slope parameter for the tanh kernel.
     """
     def __init__(self, bin_variable: str, bin_edges: List[float], slope: float, mask=None):
+        raise NotImplementedError("RelaxedBinning is currently not implemented")
         super().__init__(None, mask)
         self.bin_variable = bin_variable
         self.bin_edges = (backend.array(bin_edges), )
@@ -141,8 +146,8 @@ class RectangularBinning(AbstractBinning):
         bin_edges (Tuple[List[float]]): The edges of the bins for each variable.
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
     """
-    def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices: List[Tuple[int]] = None, mask=None):
-        super().__init__(bin_indices, mask)
+    def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices_dict: Dict[str, List[Tuple[int]]] = None, mask_dict=None):
+        super().__init__(bin_indices_dict, mask_dict)
         self.bin_variables = bin_variables
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
 
@@ -167,37 +172,35 @@ class RectangularBinning(AbstractBinning):
     def required_variables(self) -> List[str]:
         return list(self.bin_variables)
 
-    def calculate_bin_indices(self, binning_variables: Tuple[np.ndarray]) -> None:
+    def calculate_bin_indices(self, ds_key:str, binning_variables: Tuple[np.ndarray]) -> None:
         if len(set(len(bv) for bv in binning_variables)) != 1:
             raise ValueError("All binning variables must have the same length")
-
-        if self.bin_indices is None:
-            self.bin_indices = []
+       
+        if ds_key not in self.bin_indices_dict:
+            self.bin_indices_dict[ds_key] = []
             for bv, edges in zip(binning_variables, self.bin_edges):
                 #indices = backend.searchsorted(edges, bv, side="left") - 1
                 indices = backend.digitize(bv, edges) -1
-                self.bin_indices.append(indices)
+                self.bin_indices_dict[ds_key].append(indices)
 
-        if self.mask is None:
-            self.mask = backend.zeros(binning_variables[0].shape, dtype=bool)
+        if ds_key not in self.mask_dict:
+            self.mask_dict[ds_key] = backend.zeros(binning_variables[0].shape, dtype=bool)
             for bv, edges in zip(binning_variables, self.bin_edges):
-                self.mask |= (bv < edges[0]) | (bv >= edges[-1])
-
-               
+                self.mask_dict[ds_key] |= (bv < edges[0]) | (bv >= edges[-1])
 
     def build_histogram(
         self,
+        ds_key: str,
         weights: np.ndarray,
         binning_variables: Tuple[np.ndarray],
     ) -> np.ndarray:
-        if not self.bin_indices:
-            self.calculate_bin_indices(binning_variables)
+        self.calculate_bin_indices(ds_key, binning_variables)
 
-        indices_flat = backend.ravel_multi_index(tuple(self.bin_indices),
+        indices_flat = backend.ravel_multi_index(tuple(self.bin_indices_dict[ds_key]),
                                                  self.hist_dims)
         
         # Set weight of masked samples to 0
-        weights = backend.set_index(weights, self.mask, 0)
+        weights = backend.set_index(weights, self.mask_dict[ds_key], 0)
 
         #print(binning_variables[0][weights == 0])
 
