@@ -14,7 +14,7 @@ class BinnedExpectation:
 
     Args:
         name (str): Name of the BinnedExpectation.
-        model_dskey_pairs (List[Tuple[str, Model]]): List of tuples where each tuple contains a dataset key and a model.
+        dskey_model_pairs (List[Tuple[str, Model]]): List of tuples where each tuple contains a dataset key and a model.
         binning (AbstractBinning): The binning used to create the histogram.
         binned_factors (Optional[List[AbstractBinnedFactor]]): Factors to be added to the histogram.
         lifetime (float): Lifetime of the binned expectation.
