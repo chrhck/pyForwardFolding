@@ -229,7 +229,8 @@ class MinuitMinimizer(AbstractMinimizer):
                  bounds: Dict[str, Dict[str, Tuple[float, float]]],
                  seeds: Dict[str, Dict[str, float]],
                  priors: Dict[str, Dict[str, Tuple[float, float]]] = {},
-                 fixed_pars: Dict[str, Dict[str, float]] = {}):
+                 fixed_pars: Dict[str, Dict[str, float]] = {},
+                 simplex_prefit: bool = False):
 
         super().__init__(
             llh=llh,
@@ -259,6 +260,8 @@ class MinuitMinimizer(AbstractMinimizer):
         self.minuit.tol = 1e-2
         self.minuit.print_level = 0
 
+        self.simplex_prefit = simplex_prefit
+
     def _build_message(self):
         """
         Helper function for building a short fit message.
@@ -281,9 +284,12 @@ class MinuitMinimizer(AbstractMinimizer):
         return message
 
     def minimize(self):
-        print("Starting Minimization")
-        self.minuit.simplex().migrad()
-        print("Finished Minimization")
+        
+        if self.simplex_prefit:
+            self.minuit.simplex().migrad()
+        else:
+            self.minuit.migrad()
+            
         minimizer_info = {
             'success': self.minuit.valid,
             'message': self._build_message(),
