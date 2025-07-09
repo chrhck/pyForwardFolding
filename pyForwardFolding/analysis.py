@@ -71,3 +71,25 @@ class Analysis:
             output_ssq_dict[comp_name] = hist_ssq
 
         return output_dict, output_ssq_dict
+    
+    def __repr__(self):
+        """
+        String representation of the Analysis object.
+
+        Returns:
+            str: A string representation of the analysis.
+        """
+        return f"Analysis with {len(self.expectations)} expectations: {', '.join(self.expectations.keys())}"
+    
+    def __getitem__(self, item: str) -> BinnedExpectation:
+        """
+        Get a specific expectation by name.
+
+        Args:
+            item (str): The name of the expectation.
+
+        Returns:
+            BinnedExpectation: The corresponding expectation object.
+        """
+        return self.expectations[item]
+    
