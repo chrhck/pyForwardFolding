@@ -188,6 +188,23 @@ class RectangularBinning(AbstractBinning):
             for bv, edges in zip(binning_variables, self.bin_edges):
                 self.mask_dict[ds_key] |= (bv < edges[0]) | (bv >= edges[-1])
 
+
+    def clear_bin_indices(self, ds_key: str = None) -> None:
+        """
+        Clear the bin indices and mask for a specific dataset key, or all if ds_key is None.
+
+        Args:
+            ds_key (str, optional): The key for the dataset. If None, clears all bin indices and masks.
+        """
+        if ds_key is None:
+            self.bin_indices_dict.clear()
+            self.mask_dict.clear()
+        else:
+            if ds_key in self.bin_indices_dict:
+                del self.bin_indices_dict[ds_key]
+            if ds_key in self.mask_dict:
+                del self.mask_dict[ds_key]
+
     def build_histogram(
         self,
         ds_key: str,
