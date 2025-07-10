@@ -100,7 +100,9 @@ class Analysis:
         Returns:
             jnp.ndarray: The Fisher Information matrix (shape: [n_params, n_params]).
         """
+        fisher_dict = {}
         for comp_name, comp in self.expectations.items():
+            # Bad to evaluate comp.evaluate twice, but unfortunately there is no jacfwd_and_value...
             grads, _ = jacfwd(comp.evaluate, argnums=1, has_aux=True)(
                 datasets,
                 parameter_values,
@@ -109,18 +111,15 @@ class Analysis:
                 datasets,
                 parameter_values,
             )
-            grads = tree_util.tree_map(lambda v: v.flatten(), grads)
-            grads = {k: grads[k] for k in parameter_values.keys()} # Reorder keys, as jacfwd does NOT keep key order
+
+            flat_grads = [grads[k].flatten() for k in parameter_values]
             hist = hist.flatten()
+            information = [jnp.where(hist == 0, 0.0, g / jnp.sqrt(hist)) for g in flat_grads]
+            values = jnp.stack(information)
+            fisher_information = values @ values.T
+            fisher_dict[comp_name] = fisher_information
 
-            information = tree_util.tree_map(lambda g: jnp.where(hist == 0, 0.0, g / jnp.sqrt(hist)), grads)
-            flat_values, _ = tree_util.tree_flatten(information)
-            values = jnp.stack(flat_values)
-
-            fisher_information = values[:, None, :] * values[None, :, :]
-            fisher_information = jnp.sum(fisher_information, axis=-1)
-
-        return fisher_information
+        return jnp.sum(jnp.asarray([v for v in fisher_dict.values()]),axis=0)
 
     def covariance(
         self,
