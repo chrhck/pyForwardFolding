@@ -85,7 +85,7 @@ class Analysis:
         The Fisher Information quantifies the amount of information that the observed data
         carries about the model parameters. It is computed by evaluating the gradient of
         the expected bin counts with respect to the parameters and applying the standard
-        Fisher Information formula:
+        Fisher Information formula when assuming a Poisson likelihood:
         
             I_ij = Σ_k (∂μ_k/∂θ_i ∂μ_k/∂θ_j) / μ_k
 
@@ -112,6 +112,8 @@ class Analysis:
                 parameter_values,
             )
 
+            # As jacfwd does destroy the key ordering, we need to loop over the keys of parameters values
+            # This will later help to keep track of which variance belongs to which parameter
             flat_grads = [grads[k].flatten() for k in parameter_values]
             hist = hist.flatten()
             information = [jnp.where(hist == 0, 0.0, g / jnp.sqrt(hist)) for g in flat_grads]
