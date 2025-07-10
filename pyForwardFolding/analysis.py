@@ -174,3 +174,25 @@ class Analysis:
         return {
             k: v for k, v in zip(keys, var)
         }
+
+    def __repr__(self):
+        """
+        String representation of the Analysis object.
+
+        Returns:
+            str: A string representation of the analysis.
+        """
+        return f"Analysis with {len(self.expectations)} expectations: {', '.join(self.expectations.keys())}"
+    
+    def __getitem__(self, item: str) -> BinnedExpectation:
+        """
+        Get a specific expectation by name.
+
+        Args:
+            item (str): The name of the expectation.
+
+        Returns:
+            BinnedExpectation: The corresponding expectation object.
+        """
+        return self.expectations[item]
+    

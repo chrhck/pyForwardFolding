@@ -97,7 +97,10 @@ def models_from_config(path: str) -> dict:
     components = _build_components(conf, factors)
     models = _build_models(conf, components)
 
-    return {
-        dataset["name"]: models[dataset["model"]]
-        for dataset in conf["datasets"]
-    }
+    output = {}
+    for hist in conf["histograms"]:
+        output[hist["name"]] = {}
+        for model in hist["models"]:
+            output[hist["name"]][model[0]] = models[model[0]]
+
+    return output
