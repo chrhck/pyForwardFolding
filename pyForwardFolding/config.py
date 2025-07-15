@@ -1,3 +1,5 @@
+from typing import Dict
+
 import yaml
 
 from .analysis import Analysis
@@ -8,17 +10,17 @@ from .model import Model
 from .model_component import ModelComponent
 
 
-def _load_config(path: str) -> dict:
+def _load_config(path: str) -> Dict:
     with open(path, "r") as file:
         return yaml.safe_load(file)
 
 
-def _build_factors(conf: dict) -> dict:
+def _build_factors(conf: Dict) -> Dict[str, AbstractFactor]:
     factors = [AbstractFactor.construct_from(f) for f in conf["factors"]]
     return {f.name: f for f in factors}
 
 
-def _build_components(conf: dict, factors: dict) -> dict:
+def _build_components(conf: Dict, factors: Dict[str, AbstractFactor]) -> Dict[str, ModelComponent]:
     components = [
         ModelComponent(
             c["name"],
@@ -29,7 +31,7 @@ def _build_components(conf: dict, factors: dict) -> dict:
     return {c.name: c for c in components}
 
 
-def _build_models(conf: dict, components: dict) -> dict:
+def _build_models(conf: Dict, components: Dict[str, ModelComponent]) -> Dict[str, Model]:
     models = [
         Model.from_pairs(
             m["name"],
@@ -82,7 +84,7 @@ def analysis_from_config(path: str) -> Analysis:
     return Analysis(binned_expectations)
 
 
-def models_from_config(path: str) -> dict:
+def models_from_config(path: str) -> Dict[str, Model]:
     """
     Load models per dataset from a YAML file.
 
