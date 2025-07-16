@@ -5,7 +5,7 @@ import yaml
 from .analysis import Analysis
 from .binned_expectation import BinnedExpectation
 from .binning import AbstractBinning
-from .factor import AbstractBinnedFactor, AbstractFactor
+from .factor import AbstractBinnedFactor, AbstractFactor, AbstractUnbinnedFactor
 from .model import Model
 from .model_component import ModelComponent
 
@@ -16,7 +16,7 @@ def _load_config(path: str) -> Dict:
 
 
 def _build_factors(conf: Dict) -> Dict[str, AbstractFactor]:
-    factors = [AbstractFactor.construct_from(f) for f in conf["factors"]]
+    factors = [AbstractUnbinnedFactor.construct_from(f) for f in conf["factors"]]
     return {f.name: f for f in factors}
 
 

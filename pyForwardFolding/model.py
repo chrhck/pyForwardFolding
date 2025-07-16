@@ -94,10 +94,6 @@ class Model:
             ValueError: If any baseline weight is not found in the input variables.
         """
 
-        # Ensure all input variables have the same length
-        input_var_lengths = [len(value) if isinstance(value, Array) else 1 for value in input_variables.values()]
-        if not all(length == input_var_lengths[0] for length in input_var_lengths):
-            raise ValueError("All input variables must have the same length")
         output = 0.
         for component, baseline_weight in zip(self.components, self.baseline_weights):
             # Get the baseline weight value
