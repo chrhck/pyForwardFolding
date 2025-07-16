@@ -1,8 +1,8 @@
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy as np
 
-from .backend import backend, Array
+from .backend import Array, backend
 
 
 class AbstractBinning:
@@ -10,7 +10,7 @@ class AbstractBinning:
     Abstract base class for binning strategies.
     """
 
-    def __init__(self, bin_indices_dict: Dict[str, Array] = None, mask_dict: Dict[str, Array] = None):
+    def __init__(self, bin_indices_dict: Optional[Dict[str, List]] = None, mask_dict: Optional[Dict[str, Array]] = None):
         if bin_indices_dict is None:
             bin_indices_dict = {}
         if mask_dict is None:
@@ -58,20 +58,6 @@ class AbstractBinning:
         binning_variables: Tuple[np.ndarray],
     ) -> np.ndarray:
         raise NotImplementedError
-
-
-class CustomBinning(AbstractBinning):
-    """
-    Custom binning strategy.
-
-    Args:
-        bin_indices (List[int]): Indices for the bins.
-    """
-    def __init__(self, bin_indices_dict: Dict[str, List[int]], mask_dict: Dict[str, Any] = None):
-        super().__init__(bin_indices_dict, mask_dict)
-
-    def required_variables(self) -> List[str]:
-        return []
 
 
 class RelaxedBinning(AbstractBinning):
@@ -146,7 +132,12 @@ class RectangularBinning(AbstractBinning):
         bin_edges (Tuple[List[float]]): The edges of the bins for each variable.
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
     """
-    def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices_dict: Dict[str, List[Tuple[int]]] = None, mask_dict: Dict[str, Any] = None):
+    def __init__(
+            self,
+            bin_variables: Tuple[str],
+            bin_edges: Tuple[List[float]],
+            bin_indices_dict: Optional[Dict[str, List[Tuple[int]]]] = None,
+            mask_dict: Optional[Dict[str, Any]] = None):
         super().__init__(bin_indices_dict, mask_dict)
         self.bin_variables = bin_variables
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
