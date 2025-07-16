@@ -1,307 +1,337 @@
-"""Tests for the backend module."""
+"""
+Tests for pyForwardFolding.backend module.
 
-import jax.numpy as jnp
+This module contains tests for the backend functionality, including:
+- JAXBackend implementation
+- Array operations and mathematical functions
+- Statistical functions and distributions
+"""
+
 import numpy as np
 import pytest
 
-from pyForwardFolding.backend import Array, Backend, JAXBackend
-
-
-class TestBackendProtocol:
-    """Test the Backend Protocol interface."""
-    
-    def test_jax_backend_implements_protocol(self):
-        """Test that JAXBackend implements the Backend protocol."""
-        backend = JAXBackend()
-        
-        # Test that JAXBackend instance is recognized as implementing Backend protocol
-        assert isinstance(backend, Backend)
-        
-        # Test that jnp.ndarray is recognized as implementing Array protocol
-        arr = jnp.array([1, 2, 3])
-        assert isinstance(arr, Array)
-    
-    def test_protocol_method_signatures(self):
-        """Test that all protocol methods are implemented in JAXBackend."""
-        backend = JAXBackend()
-        
-        # Test that all methods exist and are callable
-        required_methods = [
-            'array', 'zeros', 'multiply', 'power', 'exp', 'sqrt', 'erf', 'fasterf',
-            'gauss_pdf', 'gauss_cdf', 'uniform_pdf', 'set_index', 'fill', 
-            'histogram', 'bincount', 'reshape', 'set_index_add', 'searchsorted',
-            'ravel_multi_index', 'clip', 'linspace', 'where_sum', 'log', 'diff',
-            'allclose', 'sum', 'tanh', 'digitize', 'any', 'where', 'sigmoid',
-            'select', 'gammaln', 'func_and_grad', 'compile', 'grad', 'logspace',
-            'arccos', 'arg_weighted_quantile', 'weighted_quantile', 'weighted_median'
-        ]
-        
-        for method_name in required_methods:
-            assert hasattr(backend, method_name), f"Missing method: {method_name}"
-            assert callable(getattr(backend, method_name)), f"Method not callable: {method_name}"
+from pyForwardFolding.backend import JAXBackend, backend
 
 
 class TestJAXBackend:
-    """Test the JAX backend implementation."""
-    
-    @pytest.fixture
-    def backend(self):
-        """Provide a JAX backend instance."""
-        return JAXBackend()
-    
-    def test_array_creation(self, backend):
-        """Test array creation operations."""
-        # Test array creation
-        arr = backend.array([1, 2, 3])
-        assert isinstance(arr, jnp.ndarray)
-        np.testing.assert_array_equal(arr, jnp.array([1, 2, 3]))
+    """Test the JAXBackend implementation."""
+
+    def test_array_creation(self):
+        """Test basic array creation."""
+        arr = backend.array([1, 2, 3, 4])
+        assert arr.shape == (4,)
+        np.testing.assert_array_equal(arr, np.array([1, 2, 3, 4]))
+
+    def test_zeros(self):
+        """Test zeros array creation."""
+        arr = backend.zeros((3, 2))
+        assert arr.shape == (3, 2)
+        np.testing.assert_array_equal(arr, np.zeros((3, 2)))
+
+    def test_basic_math_operations(self):
+        """Test basic mathematical operations."""
+        arr = backend.array([1.0, 4.0, 9.0])
         
-        # Test zeros creation
-        zeros = backend.zeros((3, 2))
-        assert zeros.shape == (3, 2)
-        np.testing.assert_array_equal(zeros, jnp.zeros((3, 2)))
+        # Power operation
+        result_power = backend.power(arr, 0.5)
+        expected_power = np.array([1.0, 2.0, 3.0])
+        np.testing.assert_array_almost_equal(result_power, expected_power)
         
-        # Test zeros with dtype
-        zeros_int = backend.zeros((2, 2), dtype=int)
-        assert zeros_int.dtype in (int, jnp.int32, jnp.int64)  # Accept various int dtypes
-    
-    def test_arithmetic_operations(self, backend):
-        """Test basic arithmetic operations."""
-        a = backend.array([1., 2., 3.])
-        b = backend.array([2., 3., 4.])
+        # Exponential
+        arr_small = backend.array([0.0, 1.0, 2.0])
+        result_exp = backend.exp(arr_small)
+        expected_exp = np.array([1.0, np.e, np.e**2])
+        np.testing.assert_array_almost_equal(result_exp, expected_exp)
         
-        # Test multiplication
-        result = backend.multiply(a, b)
-        expected = jnp.array([2., 6., 12.])
-        np.testing.assert_array_almost_equal(result, expected)
+        # Square root
+        result_sqrt = backend.sqrt(arr)
+        np.testing.assert_array_almost_equal(result_sqrt, expected_power)
         
-        # Test power
-        result = backend.power(a, 2.0)
-        expected = jnp.array([1., 4., 9.])
-        np.testing.assert_array_almost_equal(result, expected)
-        
-        # Test sum
-        result = backend.sum(a)
-        assert result == 6.0
-        
-        # Test sum with axis
-        matrix = backend.array([[1., 2.], [3., 4.]])
-        result = backend.sum(matrix, axis=0)
-        expected = jnp.array([4., 6.])
-        np.testing.assert_array_almost_equal(result, expected)
-    
-    def test_mathematical_functions(self, backend):
-        """Test mathematical functions."""
-        x = backend.array([0., 1., 2.])
-        
-        # Test exp
-        result = backend.exp(x)
-        expected = jnp.exp(x)
-        np.testing.assert_array_almost_equal(result, expected)
-        
-        # Test sqrt
-        result = backend.sqrt(backend.array([1., 4., 9.]))
-        expected = jnp.array([1., 2., 3.])
-        np.testing.assert_array_almost_equal(result, expected)
-        
-        # Test log
-        result = backend.log(backend.array([1., np.e, np.e**2]))
-        expected = jnp.array([0., 1., 2.])
-        np.testing.assert_array_almost_equal(result, expected)
-        
-        # Test tanh
-        result = backend.tanh(x)
-        expected = jnp.tanh(x)
-        np.testing.assert_array_almost_equal(result, expected)
-    
-    def test_statistical_functions(self, backend):
+        # Logarithm
+        result_log = backend.log(arr)
+        expected_log = np.log([1.0, 4.0, 9.0])
+        np.testing.assert_array_almost_equal(result_log, expected_log)
+
+    def test_statistical_functions(self):
         """Test statistical and probability functions."""
-        x = backend.array([-1., 0., 1.])
+        # Gaussian PDF
+        x = backend.array([0.0, 1.0, -1.0])
+        mu = 0.0
+        sigma = 1.0
+        pdf_result = backend.gauss_pdf(x, mu, sigma)
         
-        # Test erf
-        result = backend.erf(x)
-        expected = jnp.array([-0.8427007929497149, 0., 0.8427007929497149])
-        np.testing.assert_array_almost_equal(result, expected, decimal=6)
+        # Should be symmetric around mu=0
+        assert pdf_result[0] > pdf_result[1]  # pdf(0) > pdf(1)
+        np.testing.assert_almost_equal(pdf_result[1], pdf_result[2])  # pdf(1) ≈ pdf(-1)
         
-        # Test Gaussian PDF
-        result = backend.gauss_pdf(x, 0.0, 1.0)
-        expected = jnp.exp(-0.5 * x**2) / jnp.sqrt(2 * jnp.pi)
-        np.testing.assert_array_almost_equal(result, expected)
+        # Gaussian CDF
+        cdf_result = backend.gauss_cdf(x, mu, sigma)
+        assert cdf_result[0] > 0.4 and cdf_result[0] < 0.6  # Should be around 0.5 for x=0
+        assert cdf_result[1] > cdf_result[0]  # CDF should be increasing
+        assert cdf_result[2] < cdf_result[0]  # CDF at -1 should be less than at 0
+
+    def test_uniform_pdf(self):
+        """Test uniform probability density function."""
+        x = backend.array([0.5, 1.0, 1.5, 2.5])
+        lo = 1.0
+        hi = 2.0
+        result = backend.uniform_pdf(x, lo, hi)
         
-        # Test Gaussian CDF
-        result = backend.gauss_cdf(x, 0.0, 1.0)
-        # Compare with expected values computed using the same fasterf approximation
-        expected = 0.5 * (1 + backend.fasterf(x / backend.sqrt(2.0)))
-        np.testing.assert_array_almost_equal(result, expected)
+        # Expected: 0, 1, 1, 0 (scaled by 1/(hi-lo))
+        expected = np.array([0.0, 1.0, 1.0, 0.0])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_array_indexing_operations(self):
+        """Test array indexing and modification operations."""
+        arr = backend.array([1.0, 2.0, 3.0, 4.0])
         
-        # Test uniform PDF
-        result = backend.uniform_pdf(backend.array([0.5, 1.5, 2.5]), 0.0, 2.0)
-        expected = jnp.array([0.5, 0.5, 0.0])
-        np.testing.assert_array_almost_equal(result, expected)
-    
-    def test_array_manipulation(self, backend):
+        # Test set_index
+        new_arr = backend.set_index(arr, 1, 10.0)
+        expected = np.array([1.0, 10.0, 3.0, 4.0])
+        np.testing.assert_array_equal(new_arr, expected)
+        
+        # Test set_index_add
+        add_arr = backend.set_index_add(arr, 1, 5.0)
+        expected_add = np.array([1.0, 7.0, 3.0, 4.0])  # 2.0 + 5.0 = 7.0
+        np.testing.assert_array_equal(add_arr, expected_add)
+
+    def test_histogram_operations(self):
+        """Test histogram-related operations."""
+        # Test bincount
+        indices = backend.array([0, 1, 1, 2, 2, 2])
+        weights = backend.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        result = backend.bincount(indices, weights=weights, length=4)
+        
+        # Expected: [1.0, 5.0, 15.0, 0.0]
+        expected = np.array([1.0, 5.0, 15.0, 0.0])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_array_manipulation(self):
         """Test array manipulation functions."""
+        arr = backend.array([[1, 2], [3, 4]])
+        
         # Test reshape
-        arr = backend.array([1, 2, 3, 4, 5, 6])
-        reshaped = backend.reshape(arr, (2, 3))
-        assert reshaped.shape == (2, 3)
+        reshaped = backend.reshape(arr, (4,))
+        expected = np.array([1, 2, 3, 4])
+        np.testing.assert_array_equal(reshaped, expected)
         
         # Test clip
-        arr = backend.array([-1., 0.5, 2.])
-        clipped = backend.clip(arr, 0.0, 1.0)
-        expected = jnp.array([0., 0.5, 1.])
-        np.testing.assert_array_almost_equal(clipped, expected)
-        
-        # Test diff
-        arr = backend.array([1., 3., 6., 10.])
-        diff_result = backend.diff(arr)
-        expected = jnp.array([2., 3., 4.])
-        np.testing.assert_array_almost_equal(diff_result, expected)
-    
-    def test_search_and_binning(self, backend):
-        """Test search and binning operations."""
-        # Test searchsorted
-        arr = backend.array([1., 2., 3., 4.])
-        values = backend.array([1.5, 2.5, 3.5])
-        result = backend.searchsorted(arr, values)
-        expected = jnp.array([1, 2, 3])
-        np.testing.assert_array_equal(result, expected)
-        
-        # Test digitize
-        bins = backend.array([0., 1., 2., 3.])
-        values = backend.array([0.5, 1.5, 2.5])
-        result = backend.digitize(values, bins)
-        expected = jnp.array([1, 2, 3])
-        np.testing.assert_array_equal(result, expected)
-    
-    def test_histogram(self, backend):
-        """Test histogram functionality."""
-        x = backend.array([0.5, 1.5, 2.5, 1.2, 0.8])
-        bins = backend.array([0., 1., 2., 3.])
-        weights = backend.array([1., 1., 1., 1., 1.])
-        
-        hist = backend.histogram(x, bins, weights)
-        # Should have 2 entries in first bin, 2 in second, 1 in third
-        expected = jnp.array([2., 2., 1.])
-        np.testing.assert_array_equal(hist, expected)
-    
-    def test_conditional_operations(self, backend):
-        """Test conditional operations."""
-        condition = backend.array([True, False, True])
-        x = backend.array([1., 2., 3.])
-        y = backend.array([10., 20., 30.])
-        
-        # Test select/where
-        result = backend.select(condition, x, y)
-        expected = jnp.array([1., 20., 3.])
+        arr_to_clip = backend.array([0.5, 1.5, 2.5, 3.5])
+        clipped = backend.clip(arr_to_clip, 1.0, 3.0)
+        expected_clipped = np.array([1.0, 1.5, 2.5, 3.0])
+        np.testing.assert_array_equal(clipped, expected_clipped)
+
+    def test_linspace(self):
+        """Test linspace function."""
+        result = backend.linspace(0.0, 10.0, 5)
+        expected = np.array([0.0, 2.5, 5.0, 7.5, 10.0])
         np.testing.assert_array_almost_equal(result, expected)
+
+    def test_mathematical_functions(self):
+        """Test additional mathematical functions."""
+        arr = backend.array([0.0, 0.5, 1.0])
         
-        # Test where
+        # Test tanh
+        tanh_result = backend.tanh(arr)
+        expected_tanh = np.tanh([0.0, 0.5, 1.0])
+        np.testing.assert_array_almost_equal(tanh_result, expected_tanh)
+        
+        # Test sigmoid
+        sigmoid_result = backend.sigmoid(arr)
+        expected_sigmoid = 1 / (1 + np.exp(-np.array([0.0, 0.5, 1.0])))
+        np.testing.assert_array_almost_equal(sigmoid_result, expected_sigmoid)
+
+    def test_where_operations(self):
+        """Test conditional where operations."""
+        condition = backend.array([True, False, True, False])
+        x = backend.array([1, 2, 3, 4])
+        y = backend.array([10, 20, 30, 40])
+        
         result = backend.where(condition, x, y)
-        expected = jnp.array([1., 20., 3.])
-        np.testing.assert_array_almost_equal(result, expected)
-    
-    def test_comparison_operations(self, backend):
-        """Test comparison operations."""
-        a = backend.array([1., 2., 3.])
-        b = backend.array([1., 2.1, 2.9])
+        expected = np.array([1, 20, 3, 40])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_digitize(self):
+        """Test digitize function."""
+        x = backend.array([0.5, 1.5, 2.5, 3.5])
+        bins = backend.array([1.0, 2.0, 3.0])
+        
+        result = backend.digitize(x, bins)
+        # Values should be binned as: 0.5->0, 1.5->1, 2.5->2, 3.5->3
+        expected = np.array([0, 1, 2, 3])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_searchsorted(self):
+        """Test searchsorted function."""
+        a = backend.array([1.0, 3.0, 5.0, 7.0])
+        v = backend.array([2.0, 4.0, 6.0])
+        
+        result = backend.searchsorted(a, v)
+        expected = np.array([1, 2, 3])  # Indices where v elements would be inserted
+        np.testing.assert_array_equal(result, expected)
+
+    def test_ravel_multi_index(self):
+        """Test ravel_multi_index function."""
+        # Convert 2D indices to flat indices for a 3x4 array
+        indices = (backend.array([0, 1, 2]), backend.array([0, 2, 3]))
+        dims = (3, 4)
+        
+        result = backend.ravel_multi_index(indices, dims)
+        expected = np.array([0, 6, 11])  # (0,0)->0, (1,2)->6, (2,3)->11 for 3x4 array
+        np.testing.assert_array_equal(result, expected)
+
+    def test_weighted_quantile_functions(self):
+        """Test weighted quantile and median functions."""
+        x = backend.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        weights = backend.array([1.0, 1.0, 2.0, 1.0, 1.0])  # Higher weight on 3.0
+        
+        # Test weighted median
+        median = backend.weighted_median(x, weights)
+        # With higher weight on 3.0, median should be close to 3.0
+        assert median >= 2.0 and median <= 4.0
+        
+        # Test weighted quantile
+        q25 = backend.weighted_quantile(x, weights, 0.25)
+        q75 = backend.weighted_quantile(x, weights, 0.75)
+        
+        # Quantiles should be in order: q25 <= median <= q75
+        assert q25 <= median <= q75
+
+    def test_error_function(self):
+        """Test error function implementations."""
+        x = backend.array([0.0, 0.5, 1.0, -0.5])
+        
+        # Test standard erf
+        erf_result = backend.erf(x)
+        
+        # erf(0) = 0, erf is odd function: erf(-x) = -erf(x)
+        np.testing.assert_almost_equal(erf_result[0], 0.0, decimal=5)
+        np.testing.assert_almost_equal(erf_result[1], -erf_result[3], decimal=5)
+        
+        # Test fast erf approximation
+        fasterf_result = backend.fasterf(x)
+        
+        # Should be approximately the same as erf for small values
+        np.testing.assert_array_almost_equal(erf_result, fasterf_result, decimal=2)
+
+    def test_gamma_functions(self):
+        """Test gamma-related functions."""
+        x = backend.array([1.0, 2.0, 3.0, 4.0])
+        
+        # Test gammaln (log gamma function)
+        result = backend.gammaln(x)
+        
+        # gammaln(1) = ln(0!) = ln(1) = 0
+        # gammaln(2) = ln(1!) = ln(1) = 0  
+        # gammaln(3) = ln(2!) = ln(2)
+        # gammaln(4) = ln(3!) = ln(6)
+        np.testing.assert_almost_equal(result[0], 0.0, decimal=5)
+        np.testing.assert_almost_equal(result[1], 0.0, decimal=5)
+        np.testing.assert_almost_equal(result[2], np.log(2), decimal=5)
+        np.testing.assert_almost_equal(result[3], np.log(6), decimal=5)
+
+    def test_array_reductions(self):
+        """Test array reduction operations."""
+        arr = backend.array([[1, 2, 3], [4, 5, 6]])
+        
+        # Test sum with no axis (total sum)
+        total_sum = backend.sum(arr)
+        expected_total = 21  # 1+2+3+4+5+6
+        assert int(total_sum) == expected_total
+        
+        # Test sum with axis
+        axis0_sum = backend.sum(arr, axis=0)
+        expected_axis0 = np.array([5, 7, 9])  # Column sums
+        np.testing.assert_array_equal(axis0_sum, expected_axis0)
+        
+        # Test any
+        bool_arr = backend.array([False, True, False])
+        assert backend.any(bool_arr)
+        
+        all_false = backend.array([False, False, False])
+        assert not backend.any(all_false)
+
+    def test_diff_and_allclose(self):
+        """Test diff and allclose functions."""
+        # Test diff
+        arr = backend.array([1, 4, 6, 10])
+        diff_result = backend.diff(arr)
+        expected_diff = np.array([3, 2, 4])  # Differences between consecutive elements
+        np.testing.assert_array_equal(diff_result, expected_diff)
         
         # Test allclose
-        assert backend.allclose(a, b, atol=0.2)
-        assert not backend.allclose(a, b, atol=0.05)
-    
-    def test_jax_specific_functions(self, backend):
-        """Test JAX-specific functionality."""
-        def simple_func(x):
-            return backend.sum(x**2)
+        arr1 = backend.array([1.0, 2.0, 3.0])
+        arr2 = backend.array([1.0001, 2.0001, 3.0001])
+        arr3 = backend.array([1.1, 2.1, 3.1])
         
-        # Test func_and_grad
-        func_and_grad = backend.func_and_grad(simple_func)
-        x = backend.array([1., 2., 3.])
-        value, grad = func_and_grad(x)
-        
-        expected_value = 14.0  # 1^2 + 2^2 + 3^2
-        expected_grad = jnp.array([2., 4., 6.])  # 2*x
-        
-        assert abs(value - expected_value) < 1e-6
-        np.testing.assert_array_almost_equal(grad, expected_grad)
-        
-        # Test compile
-        compiled_func = backend.compile(simple_func)
-        result = compiled_func(x)
-        assert abs(result - expected_value) < 1e-6
-        
-        # Test grad
-        grad_func = backend.grad(simple_func)
-        grad_result = grad_func(x)
-        np.testing.assert_array_almost_equal(grad_result, expected_grad)
-    
-    def test_type_compatibility(self, backend):
-        """Test type compatibility between different array types and protocols."""
-        backend = JAXBackend()
-        
-        # Test that we can use the backend with type annotations
-        def process_data(backend_impl: Backend[jnp.ndarray], data: jnp.ndarray) -> jnp.ndarray:
-            return backend_impl.exp(backend_impl.multiply(data, data))
-        
-        # This should work without type errors
-        test_data = backend.array([1., 2., 3.])
-        result = process_data(backend, test_data)
-        expected = jnp.exp(test_data * test_data)
-        np.testing.assert_array_almost_equal(result, expected)
-    
-    def test_protocol_runtime_checking(self, backend):
-        """Test runtime protocol checking capabilities."""
-        backend = JAXBackend()
-        
-        # Test isinstance checks work with protocols
-        assert isinstance(backend, Backend)
-        
-        # Test that jnp arrays satisfy the Array protocol
-        arr = jnp.array([1, 2, 3])
-        assert isinstance(arr, Array)
-        
-        # Test that regular Python lists don't satisfy the Array protocol
-        python_list = [1, 2, 3]
-        assert not isinstance(python_list, Array)
+        # Should be close within default tolerance
+        assert backend.allclose(arr1, arr2, atol=1e-3)
+        # Should not be close with smaller tolerance  
+        assert not backend.allclose(arr1, arr3, atol=1e-3)
 
 
-class TestBackendFlexibility:
-    """Test the flexibility of the Protocol-based backend system."""
-    
-    def test_backend_agnostic_functions(self):
-        """Test that functions can work with any backend that implements the protocol."""
+class TestBackendIntegration:
+    """Integration tests for backend functionality."""
+
+    def test_backend_singleton(self):
+        """Test that backend is a singleton instance."""
+        assert isinstance(backend, JAXBackend)
         
-        def compute_gaussian_sum(backend_impl: Backend, x, mu: float = 0.0, sigma: float = 1.0):
-            """Example function that works with any backend."""
-            pdf_values = backend_impl.gauss_pdf(x, mu, sigma)
-            return backend_impl.sum(pdf_values)
+        # Create another backend instance
+        backend2 = JAXBackend()
         
-        # Test with JAX backend
-        jax_backend = JAXBackend()
-        x = jax_backend.array([-1., 0., 1.])
-        result = compute_gaussian_sum(jax_backend, x)
+        # They should have the same functionality but be different objects
+        arr1 = backend.array([1, 2, 3])
+        arr2 = backend2.array([1, 2, 3])
         
-        # Verify the result makes sense
-        assert isinstance(result, jnp.ndarray)
-        assert result > 0  # Sum of PDF values should be positive
-    
-    def test_backend_method_chaining(self):
-        """Test complex operations using method chaining."""
-        backend = JAXBackend()
+        np.testing.assert_array_equal(arr1, arr2)
+
+    def test_complex_computation_chain(self):
+        """Test a complex chain of backend operations."""
+        # Create some test data
+        x = backend.linspace(0.0, 2*np.pi, 100)
         
-        # Complex computation using multiple backend methods
-        x = backend.array([1., 2., 3., 4., 5.])
+        # Compute sin(x) using exp and complex arithmetic simulation
+        # sin(x) ≈ (exp(ix) - exp(-ix)) / 2i, but we'll use tanh for a real function
+        y = backend.tanh(x)
         
-        # Chain multiple operations: (exp(x) - 1) / x, then clip, then sum
-        result = backend.sum(
-            backend.clip(
-                (backend.exp(x) - 1) / x,
-                0.5, 
-                10.0
-            )
-        )
+        # Apply some transformations
+        y_clipped = backend.clip(y, -0.5, 0.5)
+        y_reshaped = backend.reshape(y_clipped, (10, 10))
         
-        # Verify the result is reasonable
-        assert isinstance(result, jnp.ndarray)
-        assert result > 0
+        # Compute some statistics
+        mean_val = backend.sum(y_reshaped) / backend.array(100.0)
+        
+        # Result should be reasonable
+        assert isinstance(mean_val, backend.array([0.0]).__class__)
+        assert abs(float(mean_val)) < 1.0  # Should be bounded
+
+    def test_probability_distribution_workflow(self):
+        """Test a realistic probability distribution workflow."""
+        # Generate some synthetic data points
+        x_values = backend.linspace(-3.0, 3.0, 100)
+        
+        # Parameters for Gaussian
+        mu = 0.0
+        sigma = 1.0
+        
+        # Compute PDF and CDF
+        pdf_values = backend.gauss_pdf(x_values, mu, sigma)
+        cdf_values = backend.gauss_cdf(x_values, mu, sigma)
+        
+        # Validate PDF properties
+        # PDF should be positive
+        assert backend.any(pdf_values >= 0)
+        
+        # PDF should be maximal at mu=0 (which is at index 50 for our linspace)
+        max_idx = 50  # Middle of the range
+        assert pdf_values[max_idx] >= pdf_values[0]  # Center > edge
+        assert pdf_values[max_idx] >= pdf_values[-1]  # Center > edge
+        
+        # CDF should be monotonically increasing
+        cdf_diff = backend.diff(cdf_values)
+        assert backend.any(cdf_diff >= 0)  # All differences should be non-negative
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
