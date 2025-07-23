@@ -5,7 +5,7 @@ import yaml
 from .analysis import Analysis
 from .binned_expectation import BinnedExpectation
 from .binning import AbstractBinning
-from .factor import AbstractBinnedFactor, AbstractFactor, AbstractUnbinnedFactor
+from .factor import AbstractBinnedFactor, AbstractUnbinnedFactor
 from .model import Model
 from .model_component import ModelComponent
 
@@ -15,13 +15,13 @@ def _load_config(path: str) -> Dict:
         return yaml.safe_load(file)
 
 
-def _build_factors(conf: Dict) -> Dict[str, AbstractFactor]:
+def _build_factors(conf: Dict) -> Dict[str, AbstractUnbinnedFactor]:
     factors = [AbstractUnbinnedFactor.construct_from(f) for f in conf["factors"]]
     return {f.name: f for f in factors}
 
 
 def _build_components(
-    conf: Dict, factors: Dict[str, AbstractFactor]
+    conf: Dict, factors: Dict[str, AbstractUnbinnedFactor]
 ) -> Dict[str, ModelComponent]:
     components = [
         ModelComponent(
@@ -87,7 +87,7 @@ def analysis_from_config(path: str) -> Analysis:
     return Analysis(binned_expectations)
 
 
-def models_from_config(path: str) -> Dict[str, Model]:
+def models_from_config(path: str) -> Dict[str, Dict[str, Model]]:
     """
     Load models per dataset from a YAML file.
 
@@ -102,7 +102,7 @@ def models_from_config(path: str) -> Dict[str, Model]:
     components = _build_components(conf, factors)
     models = _build_models(conf, components)
 
-    output = {}
+    output: Dict[str, Dict[str, Model]] = {}
     for hist in conf["histograms"]:
         output[hist["name"]] = {}
         for model in hist["models"]:

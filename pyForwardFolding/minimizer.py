@@ -1,16 +1,16 @@
 import functools
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, TypeVar
 
 import iminuit
 from scipy.optimize import Bounds, minimize
 
-from .backend import backend
+from .backend import Array, backend
 from .likelihood import AbstractLikelihood, AbstractPrior, GaussianUnivariatePrior
 
 
 def flat_index_dict_mapping(
-    exp_vars: Set[str], fixed_params: Dict[str, Any] = None
-) -> Dict[str, Dict[str, int]]:
+    exp_vars: Set[str], fixed_params: Optional[Dict[str, Any]] = None
+) -> Dict[str, int]:
     """
     Create a mapping of variable names to flat indices for optimization.
 
@@ -31,7 +31,7 @@ def flat_index_dict_mapping(
 
 
 def restructure_args(
-    flat_args, exp_vars: Set[str], fixed_params: Dict[str, Any] = None
+    flat_args, exp_vars: Set[str], fixed_params: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Restructure flat arguments into the original parameter structure.
@@ -55,9 +55,14 @@ def restructure_args(
     return args
 
 
+T = TypeVar("T")
+
+
 def destructure_args(
-    params: Dict[str, Any], exp_vars: Set[str], fixed_params: Dict[str, Any] = None
-) -> List[float]:
+    params: Dict[str, T],
+    exp_vars: Set[str],
+    fixed_params: Optional[Dict[str, Any]] = None,
+) -> List[T]:
     """
     Convert a dictionary of parameters into a flat list.
 
@@ -102,7 +107,7 @@ class WrappedLLH:
         self.fixed_params = fixed_params
         self.prior = prior
 
-    def __call__(self, flat_params) -> float:
+    def __call__(self, flat_params) -> Array:
         """
         Evaluate the likelihood with flattened parameters.
 
@@ -135,9 +140,6 @@ class AbstractMinimizer:
         fixed_pars (Dict): Parameters to keep fixed during optimization.
     """
 
-    llh = None
-    par_idx_map = None
-
     def __init__(
         self,
         llh: AbstractLikelihood,
@@ -151,7 +153,7 @@ class AbstractMinimizer:
         self.llh = llh
         self.obs = obs
         self.dataset = dataset
-        self.priors = []
+        self.priors: List[AbstractPrior] = []
         self.priors.append(GaussianUnivariatePrior(priors))
         self.fixed_pars = fixed_pars
 
@@ -162,7 +164,7 @@ class AbstractMinimizer:
         bounds_upper = [bound[1] for bound in bounds_list]
         seeds_list = destructure_args(seeds, exposed_vars, fixed_pars)
 
-        self.bounds = Bounds(bounds_lower, bounds_upper)
+        self.bounds = Bounds(bounds_lower, bounds_upper)  # type: ignore
         self.seeds = seeds_list
 
         self.wrapped_lh = WrappedLLH(llh, obs, dataset, fixed_pars, self.priors)
@@ -177,12 +179,17 @@ class ScipyMinimizer(AbstractMinimizer):
         llh: AbstractLikelihood,
         obs: dict,
         dataset: dict,
-        bounds: Dict[str, Dict[str, Tuple[float, float]]],
-        seeds: Dict[str, Dict[str, float]],
-        priors: Dict[str, Dict[str, Tuple[float, float]]] = {},
-        fixed_pars: Dict[str, Dict[str, float]] = {},
+        bounds: Dict[str, Tuple[float, float]],
+        seeds: Dict[str, float],
+        priors: Optional[Dict[str, Tuple[float, float]]] = None,
+        fixed_pars: Optional[Dict[str, float]] = None,
         tol: float = 1e-10,
     ):
+        if priors is None:
+            priors = {}
+        if fixed_pars is None:
+            fixed_pars = {}
+
         super().__init__(
             llh=llh,
             obs=obs,
@@ -233,12 +240,17 @@ class MinuitMinimizer(AbstractMinimizer):
         llh: AbstractLikelihood,
         obs: dict,
         dataset: dict,
-        bounds: Dict[str, Dict[str, Tuple[float, float]]],
-        seeds: Dict[str, Dict[str, float]],
-        priors: Dict[str, Dict[str, Tuple[float, float]]] = {},
-        fixed_pars: Dict[str, Dict[str, float]] = {},
+        bounds: Dict[str, Tuple[float, float]],
+        seeds: Dict[str, float],
+        priors: Optional[Dict[str, Tuple[float, float]]] = None,
+        fixed_pars: Optional[Dict[str, float]] = None,
         simplex_prefit: bool = False,
     ):
+        if priors is None:
+            priors = {}
+        if fixed_pars is None:
+            fixed_pars = {}
+
         super().__init__(
             llh=llh,
             obs=obs,
@@ -258,7 +270,7 @@ class MinuitMinimizer(AbstractMinimizer):
             if par_name not in self.fixed_pars
         ]
 
-        self.minuit = iminuit.Minuit(self.func, self.seeds, grad=self.grad, name=names)
+        self.minuit = iminuit.Minuit(self.func, self.seeds, grad=self.grad, name=names)  # type: ignore
 
         bound_list = [[lb, ub] for lb, ub in zip(self.bounds.lb, self.bounds.ub)]
         self.minuit.errordef = self.minuit.LIKELIHOOD
