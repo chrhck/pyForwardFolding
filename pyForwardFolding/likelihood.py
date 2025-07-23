@@ -48,7 +48,7 @@ class PoissonLikelihood(AbstractLikelihood):
         self,
         observed_data: Dict[str, Array],
         datasets: Dict[str, Dict[str, Union[Array, float]]],
-        parameter_values:  Dict[str, float],
+        parameter_values: Dict[str, float],
         empty_bins: str = "skip",
     ) -> Array:
         """

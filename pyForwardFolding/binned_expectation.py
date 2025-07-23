@@ -104,7 +104,8 @@ class BinnedExpectation:
             weight_sq = backend.power(weights, 2)
             # Extract binning variables
             binning_variables = tuple(
-                backend.asarray(input_variables[var]) for var in self.binning.required_variables
+                backend.asarray(input_variables[var])
+                for var in self.binning.required_variables
             )
 
             # Build histograms

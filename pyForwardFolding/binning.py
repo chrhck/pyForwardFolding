@@ -202,7 +202,9 @@ class RectangularBinning(AbstractBinning):
             )
             for bv, edges in zip(binning_variables, self.bin_edges):
                 bv_array = backend.asarray(bv) if not isinstance(bv, Array) else bv
-                self.mask_dict[ds_key] |= (bv_array < edges[0]) | (bv_array >= edges[-1])
+                self.mask_dict[ds_key] |= (bv_array < edges[0]) | (
+                    bv_array >= edges[-1]
+                )
 
     def clear_bin_indices(self, ds_key: Optional[str] = None) -> None:
         """
@@ -231,8 +233,10 @@ class RectangularBinning(AbstractBinning):
             backend.asarray(bv) if not isinstance(bv, Array) else bv
             for bv in binning_variables
         )
-        weights_array = backend.asarray(weights) if not isinstance(weights, Array) else weights
-        
+        weights_array = (
+            backend.asarray(weights) if not isinstance(weights, Array) else weights
+        )
+
         self.calculate_bin_indices(ds_key, converted_binning_variables)
 
         indices_flat = backend.ravel_multi_index(
@@ -242,6 +246,8 @@ class RectangularBinning(AbstractBinning):
         # Set weight of masked samples to 0
         weights_masked = backend.set_index(weights_array, self.mask_dict[ds_key], 0)
 
-        output = backend.bincount(indices_flat, weights=weights_masked, length=self.nbins)
+        output = backend.bincount(
+            indices_flat, weights=weights_masked, length=self.nbins
+        )
 
         return output.reshape(self.hist_dims)

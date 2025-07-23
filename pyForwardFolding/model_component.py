@@ -80,4 +80,4 @@ class ModelComponent:
         for factor in self.factors:
             output *= factor.evaluate(input_variables, parameter_values)
 
-        return output # type: ignore
+        return output  # type: ignore

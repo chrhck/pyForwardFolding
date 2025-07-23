@@ -12,6 +12,7 @@ from typing_extensions import runtime_checkable
 Array = JAXArray
 ArrayLike = Union[JAXArray, JArrayLike, Any]  # Allow any array-like input
 
+
 @runtime_checkable
 class Backend(Protocol):
     """
@@ -210,17 +211,13 @@ class Backend(Protocol):
         """
         ...
 
-    def arg_weighted_quantile(
-        self, x: Array, weights: Array, quantile: float
-    ) -> Array:
+    def arg_weighted_quantile(self, x: Array, weights: Array, quantile: float) -> Array:
         """
         Return the index of the weighted quantile.
         """
         ...
 
-    def weighted_quantile(
-        self, x: Array, weights: Array, quantile: float
-    ) -> Array:
+    def weighted_quantile(self, x: Array, weights: Array, quantile: float) -> Array:
         """
         Return the weighted quantile.
         """
