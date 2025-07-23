@@ -3,7 +3,7 @@ from typing import Dict, Tuple, Union
 import numpy as np
 
 from .analysis import Analysis
-from .backend import backend
+from .backend import Array, backend
 
 
 class AbstractLikelihood:
@@ -26,9 +26,9 @@ class AbstractLikelihood:
 
     def llh(
         self,
-        observed_data: Dict[str, np.ndarray],
-        datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
-        exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        observed_data: Dict[str, Array],
+        datasets: Dict[str, Dict[str, Union[Array, float]]],
+        exposed_variables: Dict[str, Dict[str, Union[Array, float]]],
         empty_bins: str = "skip",
     ) -> float:
         raise NotImplementedError
@@ -46,18 +46,18 @@ class PoissonLikelihood(AbstractLikelihood):
        
     def llh(
         self,
-        observed_data: Dict[str, np.ndarray],
-        datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
-        exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        observed_data: Dict[str, Array],
+        datasets: Dict[str, Dict[str, Union[Array, float]]],
+        exposed_variables: Dict[str, Dict[str, Union[Array, float]]],
         empty_bins: str = "skip",
     ) -> float:
         """
         Compute the log-likelihood between model predictions and observed data assuming Poisson statistics.
 
         Args:
-            observed_data (Dict[str, np.ndarray]): A dictionary mapping component names to observed data.
-            datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): Input datasets for the model evaluation.
-            exposed_variables (Dict[str, Dict[str, Union[np.ndarray, float]]]): Variables exposed by previously evaluated components.
+            observed_data (Dict[str, Array]): A dictionary mapping component names to observed data.
+            datasets (Dict[str, Dict[str, Union[Array, float]]]): Input datasets for the model evaluation.
+            exposed_variables (Dict[str, Dict[str, Union[Array, float]]]): Variables exposed by previously evaluated components.
             empty_bins (str): Strategy for handling empty bins (`"skip"` or `"throw"`).
 
         Returns:
@@ -127,9 +127,9 @@ class SAYLikelihood(AbstractLikelihood):
 
     def llh(
         self,
-        observed_data: Dict[str, np.ndarray],
-        datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
-        exposed_variables: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        observed_data: Dict[str, Array],
+        datasets: Dict[str, Dict[str, Union[Array, float]]],
+        exposed_variables: Dict[str, Dict[str, Union[Array, float]]],
         empty_bins: str = "skip",
     ) -> float:
         # Evaluate the analysis

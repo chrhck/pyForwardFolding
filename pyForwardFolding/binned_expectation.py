@@ -1,8 +1,6 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
-import numpy as np
-
-from .backend import backend
+from .backend import ArrayType, backend
 from .binning import AbstractBinning
 from .factor import AbstractBinnedFactor
 from .model import Model
@@ -49,7 +47,7 @@ class BinnedExpectation:
         return set(self.binning.required_variables).union(model_required_vars)
 
     @property
-    def exposed_parameters(self) -> Dict[str, List[str]]:
+    def exposed_parameters(self) -> Set[str]:
         """
         Get parameters exposed by the BinnedExpectation.
 
@@ -68,20 +66,20 @@ class BinnedExpectation:
 
     def evaluate(
         self,
-        datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
-        parameter_values: Dict[str, Union[np.ndarray, float]],
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        datasets: Dict[str, Dict[str, Union[ArrayType, float]]],
+        parameter_values: Dict[str, float],
+    ) -> Tuple[ArrayType, ArrayType]:
         """
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
-            datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
-            parameter_values (Dict[str, Union[np.ndarray, float]]): A dictionary of parameter values, where keys are parameter names and values are arrays or scalars.
+            datasets (Dict[str, Dict[str, Union[ArrayType, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
+            parameter_values (Dict[str, float]): A dictionary of parameter values, where keys are parameter names and values are arrays or scalars.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray]: A tuple containing:
-                - The histogram weights (np.ndarray).
-                - The squared weights (np.ndarray) representing the binned expectation.
+            Tuple[ArrayType, ArrayType]: A tuple containing:
+                - The histogram weights (ArrayType).
+                - The squared weights (ArrayType) representing the binned expectation.
         """
 
         hist = 0

@@ -3,7 +3,7 @@ from typing import Dict, Set, Tuple, Union
 import numpy as np
 from jax import jacfwd, tree_util
 import jax.numpy as jnp
-
+from .backend import Array
 from .binned_expectation import BinnedExpectation
 
 
@@ -42,18 +42,18 @@ class Analysis:
 
     def evaluate(
         self,
-        datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
-        parameter_values: Dict[str, Union[np.ndarray, float]],
-    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+        datasets: Dict[str, Dict[str, Union[Array, float]]],
+        parameter_values: Dict[str, float],
+    ) -> Tuple[Dict[str, Array], Dict[str, Array]]:
         """
         Evaluate all expectations in the analysis.
 
         Args:
-            datasets (Dict[str, Dict[str, Union[np.ndarray, float]]]): A dictionary mapping component names to their input variables.
-            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated expectations.
+            datasets (Dict[str, Dict[str, Union[Array, float]]]): A dictionary mapping component names to their input variables.
+            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated expectations.
 
         Returns:
-            Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]: A tuple containing:
+            Tuple[Dict[str, Array], Dict[str, Array]]: A tuple containing:
                 - A dictionary mapping component names to their evaluation results (histograms).
                 - A dictionary mapping component names to their squared evaluation results (histograms).
         """

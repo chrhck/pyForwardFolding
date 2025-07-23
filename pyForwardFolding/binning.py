@@ -1,8 +1,8 @@
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy as np
 
-from .backend import backend
+from .backend import Array, backend
 
 
 class AbstractBinning:
@@ -10,7 +10,7 @@ class AbstractBinning:
     Abstract base class for binning strategies.
     """
 
-    def __init__(self, bin_indices_dict=None, mask_dict=None):
+    def __init__(self, bin_indices_dict: Optional[Dict[str, List]] = None, mask_dict: Optional[Dict[str, Array]] = None):
         if bin_indices_dict is None:
             bin_indices_dict = {}
         if mask_dict is None:
@@ -60,20 +60,6 @@ class AbstractBinning:
         raise NotImplementedError
 
 
-class CustomBinning(AbstractBinning):
-    """
-    Custom binning strategy.
-
-    Args:
-        bin_indices (List[int]): Indices for the bins.
-    """
-    def __init__(self, bin_indices_dict: Dict[str, List[int]], mask_dict=None):
-        super().__init__(bin_indices_dict, mask_dict)
-
-    def required_variables(self) -> List[str]:
-        return []
-
-
 class RelaxedBinning(AbstractBinning):
     """
     Relaxed binning strategy using a tanh kernel.
@@ -83,7 +69,7 @@ class RelaxedBinning(AbstractBinning):
         bin_edges (List[float]): The edges of the bins.
         slope (float): The slope parameter for the tanh kernel.
     """
-    def __init__(self, bin_variable: str, bin_edges: List[float], slope: float, mask=None):
+    def __init__(self, bin_variable: str, bin_edges: List[float], slope: float, mask: Any = None):
         raise NotImplementedError("RelaxedBinning is currently not implemented")
         super().__init__(None, mask)
         self.bin_variable = bin_variable
@@ -146,7 +132,12 @@ class RectangularBinning(AbstractBinning):
         bin_edges (Tuple[List[float]]): The edges of the bins for each variable.
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
     """
-    def __init__(self, bin_variables: Tuple[str], bin_edges: Tuple[List[float]], bin_indices_dict: Dict[str, List[Tuple[int]]] = None, mask_dict=None):
+    def __init__(
+            self,
+            bin_variables: Tuple[str],
+            bin_edges: Tuple[List[float]],
+            bin_indices_dict: Optional[Dict[str, List[Tuple[int]]]] = None,
+            mask_dict: Optional[Dict[str, Any]] = None):
         super().__init__(bin_indices_dict, mask_dict)
         self.bin_variables = bin_variables
         self.bin_edges = tuple(backend.array(edges) for edges in bin_edges)
@@ -172,7 +163,7 @@ class RectangularBinning(AbstractBinning):
     def required_variables(self) -> List[str]:
         return list(self.bin_variables)
 
-    def calculate_bin_indices(self, ds_key:str, binning_variables: Tuple[np.ndarray]) -> None:
+    def calculate_bin_indices(self, ds_key: str, binning_variables: Tuple[np.ndarray]) -> None:
         if len(set(len(bv) for bv in binning_variables)) != 1:
             raise ValueError("All binning variables must have the same length")
        
