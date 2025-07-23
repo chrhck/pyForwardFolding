@@ -87,7 +87,7 @@ def analysis_from_config(path: str) -> Analysis:
     return Analysis(binned_expectations)
 
 
-def models_from_config(path: str) -> Dict[str, Model]:
+def models_from_config(path: str) -> Dict[str, Dict[str, Model]]:
     """
     Load models per dataset from a YAML file.
 
@@ -102,7 +102,7 @@ def models_from_config(path: str) -> Dict[str, Model]:
     components = _build_components(conf, factors)
     models = _build_models(conf, components)
 
-    output = {}
+    output: Dict[str, Dict[str, Model]] = {}
     for hist in conf["histograms"]:
         output[hist["name"]] = {}
         for model in hist["models"]:

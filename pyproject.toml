@@ -111,7 +111,7 @@ path = "pyForwardFolding/__init__.py"
 files = ["**/*.py"]
 show_error_codes = true
 strict = false
-exclude = ["(^|/)tests/", "clustering.py"]
+exclude = ["(^|/)tests/", "clustering\\.py"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
