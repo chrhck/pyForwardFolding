@@ -26,6 +26,7 @@ class TestJAXBackend:
         """Test zeros array creation."""
         arr = backend.zeros((3, 2))
         assert arr.shape == (3, 2)
+        assert np.all(arr == 0)
         np.testing.assert_array_equal(arr, np.zeros((3, 2)))
 
     def test_basic_math_operations(self):

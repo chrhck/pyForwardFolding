@@ -1,7 +1,5 @@
 from typing import Dict, List, Set, Tuple, Union
 
-import numpy as np
-
 from .backend import Array
 from .model_component import ModelComponent
 
