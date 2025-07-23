@@ -13,4 +13,15 @@ from . import (
     model_component,
 )
 
-__all__ = ["analysis", "backend", "binned_expectation", "binning", "config", "factor", "likelihood", "minimizer", "model", "model_component"]
+__all__ = [
+    "analysis",
+    "backend",
+    "binned_expectation",
+    "binning",
+    "config",
+    "factor",
+    "likelihood",
+    "minimizer",
+    "model",
+    "model_component",
+]

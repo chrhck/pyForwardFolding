@@ -20,7 +20,9 @@ def _build_factors(conf: Dict) -> Dict[str, AbstractFactor]:
     return {f.name: f for f in factors}
 
 
-def _build_components(conf: Dict, factors: Dict[str, AbstractFactor]) -> Dict[str, ModelComponent]:
+def _build_components(
+    conf: Dict, factors: Dict[str, AbstractFactor]
+) -> Dict[str, ModelComponent]:
     components = [
         ModelComponent(
             c["name"],
@@ -31,7 +33,9 @@ def _build_components(conf: Dict, factors: Dict[str, AbstractFactor]) -> Dict[st
     return {c.name: c for c in components}
 
 
-def _build_models(conf: Dict, components: Dict[str, ModelComponent]) -> Dict[str, Model]:
+def _build_models(
+    conf: Dict, components: Dict[str, ModelComponent]
+) -> Dict[str, Model]:
     models = [
         Model.from_pairs(
             m["name"],
@@ -69,8 +73,7 @@ def analysis_from_config(path: str) -> Analysis:
 
         dskey_model_name_pairs = hist_config["models"]
         dskey_model_pairs = [
-            (dskey, models[model_name])
-            for model_name, dskey in dskey_model_name_pairs
+            (dskey, models[model_name]) for model_name, dskey in dskey_model_name_pairs
         ]
 
         binned_expectations[hist_config["name"]] = BinnedExpectation(

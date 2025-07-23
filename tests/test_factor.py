@@ -124,10 +124,7 @@ class TestAbstractUnbinnedFactor:
 
     def test_construct_from_valid_type(self):
         """Test construct_from with valid factor type."""
-        config = {
-            "type": "FluxNorm",
-            "name": "test_flux_norm"
-        }
+        config = {"type": "FluxNorm", "name": "test_flux_norm"}
         factor = AbstractUnbinnedFactor.construct_from(config)
         assert isinstance(factor, FluxNorm)
         assert factor.name == "test_flux_norm"
@@ -140,13 +137,13 @@ class TestUtilityFunctions:
         """Test get_required_variable_values function."""
         factor = Mock()
         factor.required_variables = ["var1", "var2"]
-        
+
         input_vars = {
             "var1": backend.array([1, 2, 3]),
             "var2": backend.array([4, 5, 6]),
-            "var3": backend.array([7, 8, 9])  # Should not be included
+            "var3": backend.array([7, 8, 9]),  # Should not be included
         }
-        
+
         result = get_required_variable_values(factor, input_vars)
         assert len(result) == 2
         assert "var1" in result
@@ -156,14 +153,17 @@ class TestUtilityFunctions:
     def test_get_parameter_values(self):
         """Test get_parameter_values function."""
         factor = Mock()
-        factor.parameter_mapping = {"internal_param1": "external_param1", "internal_param2": "external_param2"}
-        
+        factor.parameter_mapping = {
+            "internal_param1": "external_param1",
+            "internal_param2": "external_param2",
+        }
+
         param_dict = {
             "external_param1": 1.5,
             "external_param2": 2.5,
-            "unused_param": 3.5  # Should not be included
+            "unused_param": 3.5,  # Should not be included
         }
-        
+
         result = get_parameter_values(factor, param_dict)
         expected = {"internal_param1": 1.5, "internal_param2": 2.5}
         assert result == expected
@@ -192,7 +192,7 @@ class TestPowerLawFlux:
         config = {
             "name": "test_power_law",
             "pivot_energy": 100.0,
-            "baseline_norm": 1e-11
+            "baseline_norm": 1e-11,
         }
         factor = PowerLawFlux.construct_from(config)
         assert factor.name == "test_power_law"
@@ -205,29 +205,29 @@ class TestPowerLawFlux:
             "name": "test_power_law",
             "pivot_energy": 100.0,
             "baseline_norm": 1e-11,
-            "param_mapping": {"flux_norm": "norm", "spectral_index": "gamma"}
+            "param_mapping": {"flux_norm": "norm", "spectral_index": "gamma"},
         }
         factor = PowerLawFlux.construct_from(config)
-        assert factor.parameter_mapping == {"flux_norm": "norm", "spectral_index": "gamma"}
+        assert factor.parameter_mapping == {
+            "flux_norm": "norm",
+            "spectral_index": "gamma",
+        }
 
     def test_evaluate(self):
         """Test PowerLawFlux evaluation."""
         factor = PowerLawFlux("power_law", pivot_energy=100.0, baseline_norm=1e-11)
-        
-        input_variables = {
-            "true_energy": backend.array([50.0, 100.0, 200.0])
-        }
-        parameters = {
-            "flux_norm": 1.0,
-            "spectral_index": 2.0
-        }
-        
+
+        input_variables = {"true_energy": backend.array([50.0, 100.0, 200.0])}
+        parameters = {"flux_norm": 1.0, "spectral_index": 2.0}
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # Expected: flux_norm * baseline_norm * (energy/pivot)^(-spectral_index)
-        expected_energy_ratio = backend.array([50.0/100.0, 100.0/100.0, 200.0/100.0])
+        expected_energy_ratio = backend.array(
+            [50.0 / 100.0, 100.0 / 100.0, 200.0 / 100.0]
+        )
         expected = 1.0 * 1e-11 * backend.power(expected_energy_ratio, -2.0)
-        
+
         np.testing.assert_array_almost_equal(result, expected)
 
 
@@ -250,13 +250,13 @@ class TestFluxNorm:
     def test_evaluate(self):
         """Test FluxNorm evaluation."""
         factor = FluxNorm("flux_norm")
-        
+
         input_variables = {}
         parameters = {"flux_norm": 2.5}
-        
+
         result = factor.evaluate(input_variables, parameters)
         expected = backend.array(2.5)
-        
+
         np.testing.assert_array_equal(result, expected)
 
 
@@ -269,7 +269,7 @@ class TestSnowstormGauss:
             name="snowstorm",
             sys_gauss_width=0.1,
             sys_sim_bounds=(-1.0, 1.0),
-            req_variable_name="sys_var"
+            req_variable_name="sys_var",
         )
         assert factor.name == "snowstorm"
         assert factor.sys_gauss_width == 0.1
@@ -283,7 +283,7 @@ class TestSnowstormGauss:
             "name": "test_snowstorm",
             "sys_gauss_width": 0.1,
             "sys_sim_bounds": [-1.0, 1.0],
-            "req_variable_name": "sys_var"
+            "req_variable_name": "sys_var",
         }
         factor = SnowstormGauss.construct_from(config)
         assert factor.name == "test_snowstorm"
@@ -297,16 +297,14 @@ class TestSnowstormGauss:
             name="snowstorm",
             sys_gauss_width=0.1,
             sys_sim_bounds=(-1.0, 1.0),
-            req_variable_name="sys_var"
+            req_variable_name="sys_var",
         )
-        
-        input_variables = {
-            "sys_var": backend.array([0.0, 0.5, -0.5])
-        }
+
+        input_variables = {"sys_var": backend.array([0.0, 0.5, -0.5])}
         parameters = {"scale": 0.2}
-        
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # Test that result has the correct shape
         assert result.shape == (3,)
         # Test that all values are positive (as expected for a probability ratio)
@@ -326,10 +324,7 @@ class TestDeltaGamma:
 
     def test_construct_from(self):
         """Test DeltaGamma construction from config."""
-        config = {
-            "name": "test_delta_gamma",
-            "reference_energy": 100.0
-        }
+        config = {"name": "test_delta_gamma", "reference_energy": 100.0}
         factor = DeltaGamma.construct_from(config)
         assert factor.name == "test_delta_gamma"
         assert factor.reference_energy == 100.0
@@ -337,19 +332,23 @@ class TestDeltaGamma:
     def test_evaluate(self):
         """Test DeltaGamma evaluation."""
         factor = DeltaGamma("delta_gamma", reference_energy=100.0)
-        
+
         input_variables = {
             "true_energy": backend.array([50.0, 100.0, 200.0]),
-            "median_energy": backend.array([60.0, 110.0, 190.0])  # Not used in current implementation
+            "median_energy": backend.array(
+                [60.0, 110.0, 190.0]
+            ),  # Not used in current implementation
         }
         parameters = {"delta_gamma": 0.1}
-        
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # Expected: (true_energy / reference_energy)^(-delta_gamma)
-        expected_energy_ratio = backend.array([50.0/100.0, 100.0/100.0, 200.0/100.0])
+        expected_energy_ratio = backend.array(
+            [50.0 / 100.0, 100.0 / 100.0, 200.0 / 100.0]
+        )
         expected = backend.power(expected_energy_ratio, -0.1)
-        
+
         np.testing.assert_array_almost_equal(result, expected)
 
 
@@ -358,7 +357,9 @@ class TestModelInterpolator:
 
     def test_init(self):
         """Test ModelInterpolator initialization."""
-        factor = ModelInterpolator("interpolator", "baseline_weight", "alternative_weight")
+        factor = ModelInterpolator(
+            "interpolator", "baseline_weight", "alternative_weight"
+        )
         assert factor.name == "interpolator"
         assert factor.base_key == "baseline_weight"
         assert factor.alt_key == "alternative_weight"
@@ -370,7 +371,7 @@ class TestModelInterpolator:
         config = {
             "name": "test_interpolator",
             "baseline_weight": "base_w",
-            "alternative_weight": "alt_w"
+            "alternative_weight": "alt_w",
         }
         factor = ModelInterpolator.construct_from(config)
         assert factor.name == "test_interpolator"
@@ -379,16 +380,18 @@ class TestModelInterpolator:
 
     def test_evaluate_normal_case(self):
         """Test ModelInterpolator evaluation for normal case."""
-        factor = ModelInterpolator("interpolator", "baseline_weight", "alternative_weight")
-        
+        factor = ModelInterpolator(
+            "interpolator", "baseline_weight", "alternative_weight"
+        )
+
         input_variables = {
             "baseline_weight": backend.array([1.0, 2.0, 3.0]),
-            "alternative_weight": backend.array([1.5, 2.5, 3.5])
+            "alternative_weight": backend.array([1.5, 2.5, 3.5]),
         }
         parameters = {"lambda_int": 0.5}
-        
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # Test that result has the correct shape
         assert result.shape == (3,)
         # Test that interpolation works as expected (values between baseline adjustments)
@@ -396,16 +399,18 @@ class TestModelInterpolator:
 
     def test_evaluate_zero_baseline(self):
         """Test ModelInterpolator evaluation when baseline weight is zero."""
-        factor = ModelInterpolator("interpolator", "baseline_weight", "alternative_weight")
-        
+        factor = ModelInterpolator(
+            "interpolator", "baseline_weight", "alternative_weight"
+        )
+
         input_variables = {
             "baseline_weight": backend.array([0.0, 2.0, 0.0]),
-            "alternative_weight": backend.array([1.5, 2.5, 3.5])
+            "alternative_weight": backend.array([1.5, 2.5, 3.5]),
         }
         parameters = {"lambda_int": 0.5}
-        
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # When baseline weight is 0, result should be 1
         np.testing.assert_array_equal(result[0], 1.0)
         np.testing.assert_array_equal(result[2], 1.0)
@@ -429,7 +434,7 @@ class TestGradientReweight:
         config = {
             "name": "test_grad_reweight",
             "gradient_key_mapping": {"param1": "grad1", "param2": "grad2"},
-            "baseline_weight": "baseline"
+            "baseline_weight": "baseline",
         }
         factor = GradientReweight.construct_from(config)
         assert factor.name == "test_grad_reweight"
@@ -440,22 +445,24 @@ class TestGradientReweight:
         """Test GradientReweight evaluation."""
         gradient_mapping = {"param1": "grad1", "param2": "grad2"}
         factor = GradientReweight("grad_reweight", gradient_mapping, "baseline")
-        
+
         input_variables = {
             "grad1": backend.array([0.1, 0.2, 0.3]),
             "grad2": backend.array([0.05, 0.1, 0.15]),
-            "baseline": backend.array([1.0, 2.0, 3.0])
+            "baseline": backend.array([1.0, 2.0, 3.0]),
         }
         parameters = {"param1": 0.5, "param2": 0.2}
-        
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # Expected: (baseline + param1*grad1 + param2*grad2) / baseline
-        expected_numerator = input_variables["baseline"] + \
-                           0.5 * input_variables["grad1"] + \
-                           0.2 * input_variables["grad2"]
+        expected_numerator = (
+            input_variables["baseline"]
+            + 0.5 * input_variables["grad1"]
+            + 0.2 * input_variables["grad2"]
+        )
         expected = expected_numerator / input_variables["baseline"]
-        
+
         np.testing.assert_array_almost_equal(result, expected)
 
 
@@ -467,10 +474,10 @@ class TestVetoThreshold:
         factor = VetoThreshold(
             name="veto_threshold",
             threshold_a="coeff_a",
-            threshold_b="coeff_b", 
+            threshold_b="coeff_b",
             threshold_c="coeff_c",
             rescale_energy=100.0,
-            anchor_energy=50.0
+            anchor_energy=50.0,
         )
         assert factor.name == "veto_threshold"
         assert factor.a == "coeff_a"
@@ -489,7 +496,7 @@ class TestVetoThreshold:
             "threshold_b": "coeff_b",
             "threshold_c": "coeff_c",
             "rescale_energy": 100.0,
-            "anchor_energy": 50.0
+            "anchor_energy": 50.0,
         }
         factor = VetoThreshold.construct_from(config)
         assert factor.name == "test_veto_threshold"
@@ -503,20 +510,20 @@ class TestVetoThreshold:
             name="veto_threshold",
             threshold_a="coeff_a",
             threshold_b="coeff_b",
-            threshold_c="coeff_c", 
+            threshold_c="coeff_c",
             rescale_energy=100.0,
-            anchor_energy=50.0
+            anchor_energy=50.0,
         )
-        
+
         input_variables = {
             "coeff_a": backend.array([1.0, 1.1, 0.9]),
             "coeff_b": backend.array([0.1, 0.15, 0.05]),
-            "coeff_c": backend.array([0.01, 0.02, 0.005])
+            "coeff_c": backend.array([0.01, 0.02, 0.005]),
         }
         parameters = {"e_threshold": 0.0}  # log10(threshold energy / 100 GeV)
-        
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # Test that result has the correct shape
         assert result.shape == (3,)
         # Test that all values are positive (as expected for a reweight factor)
@@ -537,11 +544,7 @@ class TestSoftCut:
 
     def test_construct_from(self):
         """Test SoftCut construction from config."""
-        config = {
-            "name": "test_soft_cut",
-            "cut_variable": "energy",
-            "slope": 5.0
-        }
+        config = {"name": "test_soft_cut", "cut_variable": "energy", "slope": 5.0}
         factor = SoftCut.construct_from(config)
         assert factor.name == "test_soft_cut"
         assert factor.cut_variable == "energy"
@@ -550,14 +553,12 @@ class TestSoftCut:
     def test_evaluate(self):
         """Test SoftCut evaluation."""
         factor = SoftCut("soft_cut", "energy", slope=10.0)
-        
-        input_variables = {
-            "energy": backend.array([1.0, 5.0, 10.0])
-        }
+
+        input_variables = {"energy": backend.array([1.0, 5.0, 10.0])}
         parameters = {"soft_cut": 5.0}
-        
+
         result = factor.evaluate(input_variables, parameters)
-        
+
         # Test that result has the correct shape
         assert result.shape == (3,)
         # Test that sigmoid produces values between 0 and 1
@@ -588,7 +589,9 @@ class TestAbstractBinnedFactor:
         """Test construct_from with unknown factor type."""
         mock_binning = Mock(spec=AbstractBinning)
         config = {"type": "UnknownBinnedFactor", "name": "test"}
-        with pytest.raises(ValueError, match="Unknown factor type: UnknownBinnedFactor"):
+        with pytest.raises(
+            ValueError, match="Unknown factor type: UnknownBinnedFactor"
+        ):
             AbstractBinnedFactor.construct_from(config, mock_binning)
 
 
@@ -599,17 +602,20 @@ class TestSnowStormGradient:
         """Test SnowStormGradient initialization with dimension mismatch."""
         mock_binning = Mock(spec=AbstractBinning)
         mock_binning.hist_dims = [10, 20]  # 2D binning
-        
+
         # Create a temporary pickle file with mismatched dimensions
         gradient_data = {
-            "binning": [np.linspace(0, 1, 11), np.linspace(0, 1, 16)],  # Different dimensions (10, 15)
-            "livetime": 1000.0
+            "binning": [
+                np.linspace(0, 1, 11),
+                np.linspace(0, 1, 16),
+            ],  # Different dimensions (10, 15)
+            "livetime": 1000.0,
         }
-        
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl') as f:
+
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=".pkl") as f:
             pickle.dump(gradient_data, f)
             temp_file = f.name
-        
+
         try:
             with pytest.raises(ValueError, match="Mismatch between binning dimensions"):
                 SnowStormGradient(
@@ -619,31 +625,35 @@ class TestSnowStormGradient:
                     gradient_names=["grad1"],
                     default=[0.0],
                     split_values=[0.0],
-                    gradient_pickle=temp_file
+                    gradient_pickle=temp_file,
                 )
         finally:
             import os
+
             os.unlink(temp_file)
 
     def test_construct_from(self):
         """Test SnowStormGradient construction from config."""
         mock_binning = Mock(spec=AbstractBinning)
         mock_binning.hist_dims = [10, 20]
-        
+
         # Create a temporary pickle file with correct dimensions
         gradient_data = {
-            "binning": [np.linspace(0, 1, 11), np.linspace(0, 1, 21)],  # Matching dimensions (10, 20)
+            "binning": [
+                np.linspace(0, 1, 11),
+                np.linspace(0, 1, 21),
+            ],  # Matching dimensions (10, 20)
             "livetime": 1000.0,
             "grad1": {
                 "gradient": np.random.random((10, 20)),
-                "gradient_error": np.random.random((10, 20))
-            }
+                "gradient_error": np.random.random((10, 20)),
+            },
         }
-        
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl') as f:
+
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=".pkl") as f:
             pickle.dump(gradient_data, f)
             temp_file = f.name
-        
+
         try:
             config = {
                 "name": "test_gradient",
@@ -651,15 +661,16 @@ class TestSnowStormGradient:
                 "gradient_names": ["grad1"],
                 "default": [0.0],
                 "split_values": [0.0],
-                "gradient_pickle": temp_file
+                "gradient_pickle": temp_file,
             }
-            
+
             factor = SnowStormGradient.construct_from(config, mock_binning)
             assert factor.name == "test_gradient"
             assert factor.factor_parameters == ["param1"]
             assert factor.gradient_names == ["grad1"]
         finally:
             import os
+
             os.unlink(temp_file)
 
 
@@ -670,70 +681,69 @@ class TestScaledTemplate:
         """Test ScaledTemplate initialization and construction from config."""
         mock_binning = Mock(spec=AbstractBinning)
         mock_binning.hist_dims = [10, 20]
-        
+
         # Create a temporary pickle file with template data
         template_data = {
             "template": np.random.random(200),  # Flattened 10x20 array
         }
-        
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl') as f:
+
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=".pkl") as f:
             pickle.dump(template_data, f)
             temp_file = f.name
-        
+
         try:
-            config = {
-                "name": "test_template",
-                "template_file": temp_file
-            }
-            
+            config = {"name": "test_template", "template_file": temp_file}
+
             factor = ScaledTemplate.construct_from(config, mock_binning)
             assert factor.name == "test_template"
             assert factor.factor_parameters == ["template_norm"]
-            
+
             # Test evaluation
             input_variables = {}
             parameters = {"template_norm": 2.0}
-            
+
             result, fluctuation = factor.evaluate(input_variables, parameters)
-            
+
             # Test that result has the correct shape
             assert result.shape == (10, 20)
             assert fluctuation is None  # No template_fluctuation in test data
-            
+
         finally:
             import os
+
             os.unlink(temp_file)
 
     def test_evaluate_with_fluctuation(self):
         """Test ScaledTemplate evaluation with template fluctuation."""
         mock_binning = Mock(spec=AbstractBinning)
         mock_binning.hist_dims = [5, 4]
-        
+
         # Create template data with fluctuation
         template_data = {
             "template": np.random.random(20),  # Flattened 5x4 array
-            "template_fluctuation": np.random.random(20)
+            "template_fluctuation": np.random.random(20),
         }
-        
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl') as f:
+
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=".pkl") as f:
             pickle.dump(template_data, f)
             temp_file = f.name
-        
+
         try:
             factor = ScaledTemplate("template_factor", mock_binning, temp_file)
-            
+
             input_variables = {}
             parameters = {"template_norm": 3.0}
-            
+
             result, fluctuation = factor.evaluate(input_variables, parameters)
-            
+
             # Test that result and fluctuation have the correct shapes
             assert result.shape == (5, 4)
             assert fluctuation is not None
             assert fluctuation.shape == (5, 4)
-            
+
         finally:
             import os
+
             os.unlink(temp_file)
 
 
@@ -745,18 +755,18 @@ class TestFactorIntegration:
         # Create two factors that use the same energy variable
         power_law = PowerLawFlux("power_law", 100.0, 1e-11)
         delta_gamma = DeltaGamma("delta_gamma", reference_energy=100.0)
-        
+
         input_variables = {
             "true_energy": backend.array([50.0, 100.0, 200.0]),
-            "median_energy": backend.array([60.0, 110.0, 190.0])
+            "median_energy": backend.array([60.0, 110.0, 190.0]),
         }
-        
+
         power_law_params = {"flux_norm": 1.0, "spectral_index": 2.0}
         delta_gamma_params = {"delta_gamma": 0.1}
-        
+
         result1 = power_law.evaluate(input_variables, power_law_params)
         result2 = delta_gamma.evaluate(input_variables, delta_gamma_params)
-        
+
         # Both should produce valid results
         assert result1.shape == (3,)
         assert result2.shape == (3,)
@@ -767,37 +777,38 @@ class TestFactorIntegration:
         """Test chaining factor evaluations (multiplying results)."""
         flux_norm = FluxNorm("flux_norm")
         power_law = PowerLawFlux("power_law", 100.0, 1e-11)
-        
-        input_variables = {
-            "true_energy": backend.array([100.0])
-        }
-        
+
+        input_variables = {"true_energy": backend.array([100.0])}
+
         flux_params = {"flux_norm": 2.0}
         power_params = {"flux_norm": 1.0, "spectral_index": 2.0}
-        
+
         flux_result = flux_norm.evaluate({}, flux_params)
         power_result = power_law.evaluate(input_variables, power_params)
-        
+
         # Combine results
         combined = flux_result * power_result
-        
+
         # Should be 2.0 * (1.0 * 1e-11 * (100/100)^(-2.0)) = 2.0 * 1e-11
         expected = 2.0 * 1e-11
         np.testing.assert_almost_equal(combined, expected)
 
     def test_parameter_mapping_consistency(self):
         """Test that parameter mapping works consistently across factors."""
-        param_mapping = {"flux_norm": "external_norm", "spectral_index": "external_gamma"}
-        
+        param_mapping = {
+            "flux_norm": "external_norm",
+            "spectral_index": "external_gamma",
+        }
+
         power_law = PowerLawFlux("power_law", 100.0, 1e-11, param_mapping)
-        
+
         # Parameters should use the external names
         external_params = {"external_norm": 1.5, "external_gamma": 2.5}
-        
+
         input_variables = {"true_energy": backend.array([100.0])}
-        
+
         result = power_law.evaluate(input_variables, external_params)
-        
+
         # Should use the mapped parameter values
         expected = 1.5 * 1e-11 * backend.power(1.0, -2.5)
         np.testing.assert_almost_equal(result, expected)

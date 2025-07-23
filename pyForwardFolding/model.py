@@ -16,7 +16,10 @@ class Model:
     Notes:
         - Component names must be unique within a model.
     """
-    def __init__(self, name: str, components: List[ModelComponent], baseline_weights: List[str]):
+
+    def __init__(
+        self, name: str, components: List[ModelComponent], baseline_weights: List[str]
+    ):
         self.name = name
         self.components = components
         self.baseline_weights = baseline_weights
@@ -27,7 +30,9 @@ class Model:
             raise ValueError("Model components must have unique names")
 
     @classmethod
-    def from_pairs(cls, name: str, components: List[Tuple[str, ModelComponent]]) -> "Model":
+    def from_pairs(
+        cls, name: str, components: List[Tuple[str, ModelComponent]]
+    ) -> "Model":
         """
         Alternate constructor to create a Model from a list of (baseline_weight, component) pairs.
 
@@ -50,7 +55,9 @@ class Model:
         Returns:
             Set[str]: A set containing all required variables.
         """
-        return {var for component in self.components for var in component.required_variables}
+        return {
+            var for component in self.components for var in component.required_variables
+        }
 
     @property
     def exposed_parameters(self) -> Set[str]:
@@ -61,7 +68,9 @@ class Model:
             Dict[str, Dict[str, str]]: A merged dictionary of all exposed parameters from all components.
         """
 
-        return {par for component in self.components for par in component.exposed_parameters}
+        return {
+            par for component in self.components for par in component.exposed_parameters
+        }
 
     @property
     def parameter_mapping(self) -> Dict[str, Dict[str, str]]:
@@ -71,7 +80,9 @@ class Model:
         Returns:
             Dict[str, Dict[str, str]]: A dictionary mapping component names to their parameter names.
         """
-        return {component.name: component.parameter_mapping for component in self.components}
+        return {
+            component.name: component.parameter_mapping for component in self.components
+        }
 
     def evaluate(
         self,
@@ -92,12 +103,14 @@ class Model:
             ValueError: If any baseline weight is not found in the input variables.
         """
 
-        output = 0.
+        output = 0.0
         for component, baseline_weight in zip(self.components, self.baseline_weights):
             # Get the baseline weight value
             baseline_weight_value = input_variables.get(baseline_weight, None)
             if baseline_weight_value is None:
-                raise ValueError(f"Baseline weight '{baseline_weight}' not found in input variables")
+                raise ValueError(
+                    f"Baseline weight '{baseline_weight}' not found in input variables"
+                )
 
             # Initialize the component buffer with the baseline weight value
             comp_eval = baseline_weight_value
@@ -110,9 +123,8 @@ class Model:
 
         return output
 
-
     def evaluate_per_component(
-                    self,
+        self,
         input_variables: Dict[str, Union[Array, float]],
         parameter_values: Dict[str, Union[Array, float]],
     ) -> Dict[str, Union[Array, float]]:
@@ -128,7 +140,10 @@ class Model:
         """
 
         # Ensure all input variables have the same length
-        input_var_lengths = [len(value) if isinstance(value, Array) else 1 for value in input_variables.values()]
+        input_var_lengths = [
+            len(value) if isinstance(value, Array) else 1
+            for value in input_variables.values()
+        ]
         if not all(length == input_var_lengths[0] for length in input_var_lengths):
             raise ValueError("All input variables must have the same length")
         output = {}
@@ -136,7 +151,9 @@ class Model:
             # Get the baseline weight value
             baseline_weight_value = input_variables.get(baseline_weight, None)
             if baseline_weight_value is None:
-                raise ValueError(f"Baseline weight '{baseline_weight}' not found in input variables")
+                raise ValueError(
+                    f"Baseline weight '{baseline_weight}' not found in input variables"
+                )
 
             # Initialize the component buffer with the baseline weight value
             comp_eval = baseline_weight_value

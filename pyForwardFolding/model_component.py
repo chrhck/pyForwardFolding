@@ -16,6 +16,7 @@ class ModelComponent:
     Notes:
         - Factor names must be unique within a component.
     """
+
     def __init__(self, name: str, factors: List[AbstractFactor]):
         self.name = name
         self.factors = factors
@@ -37,7 +38,7 @@ class ModelComponent:
         for factor in self.factors:
             exposed |= set(factor.exposed_parameters)
         return exposed
-    
+
     @property
     def parameter_mapping(self) -> Dict[str, str]:
         """
@@ -47,7 +48,7 @@ class ModelComponent:
             Dict[str, str]: A dictionary mapping parameter names to their factor names.
         """
         return {factor.name: factor.parameter_mapping for factor in self.factors}
-               
+
     @property
     def required_variables(self) -> Set[str]:
         """
@@ -75,7 +76,7 @@ class ModelComponent:
             np.ndarray: The modified output vector.
         """
 
-        output = 1.
+        output = 1.0
 
         for factor in self.factors:
             output *= factor.evaluate(input_variables, parameter_values)
