@@ -1,94 +1,21 @@
 from math import pi
-from typing import Any, Protocol, Tuple, TypeVar, cast
+from typing import Any, Protocol, TypeVar, cast
 
 import jax.nn
 import jax.numpy as jnp
 import jax.scipy.special
 from jax import Array as JAXArray
-from jax.typing import ArrayLike
+from jax.typing import ArrayLike as JArrayLike
 from typing_extensions import runtime_checkable
 
-
-@runtime_checkable
-class Array(Protocol):
-    @property
-    def shape(self) -> Tuple[int, ...]: ...
-
-    @property
-    def dtype(self) -> Any: ...
-
-    def __getitem__(self, key) -> "Array": ...
-    def __setitem__(self, key, value) -> None: ...
-    def __len__(self) -> int: ...
-    def __iter__(self) -> Any: ...
-    def __reversed__(self) -> "Array": ...
-    def __round__(self, ndigits=None) -> "Array": ...
-
-    # Comparisons
-
-    # these return bool for object, so ignore override errors.
-    def __lt__(self, other) -> "Array": ...
-    def __le__(self, other) -> "Array": ...
-    def __eq__(self, other) -> "Array": ...  # type: ignore[override]
-    def __ne__(self, other) -> "Array": ...  # type: ignore[override]
-    def __gt__(self, other) -> "Array": ...
-    def __ge__(self, other) -> "Array": ...
-
-    # Unary arithmetic
-
-    def __neg__(self) -> "Array": ...
-    def __pos__(self) -> "Array": ...
-    def __abs__(self) -> "Array": ...
-    def __invert__(self) -> "Array": ...
-
-    # Binary arithmetic
-
-    def __add__(self, other) -> "Array": ...
-    def __sub__(self, other) -> "Array": ...
-    def __mul__(self, other) -> "Array": ...
-    def __matmul__(self, other) -> "Array": ...
-    def __truediv__(self, other) -> "Array": ...
-    def __floordiv__(self, other) -> "Array": ...
-    def __mod__(self, other) -> "Array": ...
-    def __divmod__(self, other) -> tuple["Array", "Array"]: ...
-    def __pow__(self, other) -> "Array": ...
-    def __lshift__(self, other) -> "Array": ...
-    def __rshift__(self, other) -> "Array": ...
-    def __and__(self, other) -> "Array": ...
-    def __xor__(self, other) -> "Array": ...
-    def __or__(self, other) -> "Array": ...
-
-    def __radd__(self, other) -> "Array": ...
-    def __rsub__(self, other) -> "Array": ...
-    def __rmul__(self, other) -> "Array": ...
-    def __rmatmul__(self, other) -> "Array": ...
-    def __rtruediv__(self, other) -> "Array": ...
-    def __rfloordiv__(self, other) -> "Array": ...
-    def __rmod__(self, other) -> "Array": ...
-    def __rdivmod__(self, other) -> "Array": ...
-    def __rpow__(self, other) -> "Array": ...
-    def __rlshift__(self, other) -> "Array": ...
-    def __rrshift__(self, other) -> "Array": ...
-    def __rand__(self, other) -> "Array": ...
-    def __rxor__(self, other) -> "Array": ...
-    def __ror__(self, other) -> "Array": ...
-
-    def __bool__(self) -> bool: ...
-    def __complex__(self) -> complex: ...
-    def __int__(self) -> int: ...
-    def __float__(self) -> float: ...
-    def __index__(self) -> int: ...
-
-    def __buffer__(self, flags: int) -> memoryview: ...
-
-    def astype(self, dtype: Any) -> "Array": ...
-
+ArrayLike = JArrayLike
+Array = JAXArray 
 
 ArrayType = TypeVar("ArrayType", bound=Array)
-
+ArrayLikeType = TypeVar("ArrayLikeType", bound=ArrayLike)
 
 @runtime_checkable
-class Backend(Protocol[ArrayType]):
+class Backend(Protocol[ArrayType, ArrayLikeType]):
     """
     Protocol for backend interface for numerical operations.
     """
@@ -109,19 +36,19 @@ class Backend(Protocol[ArrayType]):
         """Element-wise power operation."""
         ...
 
-    def exp(self, a: ArrayType) -> ArrayType:
+    def exp(self, a: Any) -> ArrayType:
         """Element-wise exponential."""
         ...
 
-    def sqrt(self, a: ArrayType) -> ArrayType:
+    def sqrt(self, a: Any) -> ArrayType:
         """Element-wise square root."""
         ...
 
-    def erf(self, a: ArrayType) -> ArrayType:
+    def erf(self, a: Any) -> ArrayType:
         """Element-wise error function."""
         ...
 
-    def fasterf(self, x: ArrayType) -> ArrayType:
+    def fasterf(self, x: Any) -> ArrayType:
         """Fast approximation of error function."""
         ...
 
@@ -137,15 +64,15 @@ class Backend(Protocol[ArrayType]):
         """Uniform probability density function."""
         ...
 
-    def set_index(self, x: ArrayType, index: Any, values: Any) -> ArrayType:
+    def set_index(self, x: ArrayLike, index: Any, values: Any) -> ArrayType:
         """Set values at specified indices."""
         ...
 
-    def fill(self, x: ArrayType, value: Any) -> ArrayType:
+    def fill(self, x: ArrayLike, value: Any) -> ArrayType:
         """Fill array with a value."""
         ...
 
-    def histogram(self, x: ArrayType, bins: Any, weights: ArrayType) -> ArrayType:
+    def histogram(self, x: Any, bins: Any, weights: Any) -> ArrayType:
         """Compute histogram."""
         ...
 
@@ -201,7 +128,7 @@ class Backend(Protocol[ArrayType]):
         """
         ...
 
-    def allclose(self, a: ArrayType, b: ArrayType, atol: float = 1e-8) -> ArrayType:
+    def allclose(self, a: Any, b: Any, atol: float = 1e-8) -> ArrayType:
         """
         Checks if two arrays are element-wise equal within a tolerance.
         """
@@ -213,7 +140,7 @@ class Backend(Protocol[ArrayType]):
         """
         ...
 
-    def tanh(self, x: ArrayType) -> ArrayType:
+    def tanh(self, x: Any) -> Any:
         """
         Computes the hyperbolic tangent of x.
         """
@@ -329,13 +256,13 @@ class JAXBackend:
     def power(self, a: ArrayLike, b: Any) -> JAXArray:
         return a**b
 
-    def exp(self, a: ArrayLike) -> JAXArray:
+    def exp(self, a: JArrayLike) -> JAXArray:
         return jnp.exp(a)
 
-    def sqrt(self, a: ArrayLike) -> JAXArray:
+    def sqrt(self, a: JArrayLike) -> JAXArray:
         return jnp.sqrt(a)
 
-    def erf(self, a: ArrayLike) -> JAXArray:
+    def erf(self, a: JArrayLike) -> JAXArray:
         return jax.scipy.special.erf(a)
 
     def fasterf(self, x: ArrayLike) -> JAXArray:
@@ -384,51 +311,51 @@ class JAXBackend:
         x = jnp.asarray(x)
         return x.at[:].set(value)
 
-    def histogram(self, x: ArrayLike, bins: Any, weights: ArrayLike) -> JAXArray:
+    def histogram(self, x: JArrayLike, bins: Any, weights: JArrayLike) -> JAXArray:
         hist, _ = jnp.histogram(x, bins=bins, weights=weights)
         return hist
 
-    def bincount(self, x: ArrayLike, weights: ArrayLike, length: int) -> JAXArray:
+    def bincount(self, x: JArrayLike, weights: JArrayLike, length: int) -> JAXArray:
         return jnp.bincount(x, weights=weights, length=length)
 
     def reshape(self, x: ArrayLike, shape: Any) -> JAXArray:
         x = jnp.asarray(x)
         return x.reshape(shape)
 
-    def searchsorted(self, a: ArrayLike, v: ArrayLike, side: str = "left") -> JAXArray:
+    def searchsorted(self, a: JArrayLike, v: JArrayLike, side: str = "left") -> JAXArray:
         return jnp.searchsorted(a, v, side=side)
 
     def ravel_multi_index(self, multi_index: Any, dims: Any) -> JAXArray:
         return jnp.ravel_multi_index(multi_index, dims, mode="clip")
 
-    def clip(self, x: ArrayLike, low: Any, high: Any) -> JAXArray:
+    def clip(self, x: JArrayLike, low: Any, high: Any) -> JAXArray:
         return jnp.clip(x, low, high)
 
     def linspace(self, start: float, stop: float, num: int) -> JAXArray:
         return jnp.linspace(start, stop, num)
 
-    def where_sum(self, condition: ArrayLike, x: ArrayLike, y: ArrayLike) -> JAXArray:
+    def where_sum(self, condition: JArrayLike, x: JArrayLike, y: JArrayLike) -> JAXArray:
         return jnp.where(condition, x, y).sum()
 
-    def log(self, x: ArrayLike) -> JAXArray:
+    def log(self, x: JArrayLike) -> JAXArray:
         return jnp.log(x)
 
-    def diff(self, x: ArrayLike, axis: int = 0) -> JAXArray:
+    def diff(self, x: JArrayLike, axis: int = 0) -> JAXArray:
         return jnp.diff(x, axis=axis)
 
-    def allclose(self, a: ArrayLike, b: ArrayLike, atol: float = 1e-8) -> JAXArray:
+    def allclose(self, a: JArrayLike, b: JArrayLike, atol: float = 1e-8) -> JAXArray:
         return jnp.allclose(a, b, atol=atol)
 
-    def sum(self, x: ArrayLike, axis: Any = None) -> JAXArray:
+    def sum(self, x: JArrayLike, axis: Any = None) -> JAXArray:
         return jnp.sum(x, axis=axis)
 
-    def tanh(self, x: ArrayLike) -> JAXArray:
+    def tanh(self, x: JArrayLike) -> JAXArray:
         return jnp.tanh(x)
 
-    def select(self, condition: ArrayLike, x: ArrayLike, y: ArrayLike) -> JAXArray:
+    def select(self, condition: JArrayLike, x: JArrayLike, y: JArrayLike) -> JAXArray:
         return jnp.where(condition, x, y)
 
-    def gammaln(self, x: ArrayLike) -> JAXArray:
+    def gammaln(self, x: JArrayLike) -> JAXArray:
         return jax.scipy.special.gammaln(x)
 
     def func_and_grad(self, func: Any) -> Any:
@@ -443,10 +370,10 @@ class JAXBackend:
     def logspace(self, start: float, stop: float, num: int) -> JAXArray:
         return jnp.logspace(start, stop, num)
 
-    def arccos(self, x: ArrayLike) -> JAXArray:
+    def arccos(self, x: JArrayLike) -> JAXArray:
         return jnp.arccos(x)
 
-    def digitize(self, x: ArrayLike, bins: ArrayLike) -> JAXArray:
+    def digitize(self, x: JArrayLike, bins: JArrayLike) -> JAXArray:
         return jnp.digitize(x, bins, right=False)
 
     def arg_weighted_quantile(
@@ -475,18 +402,18 @@ class JAXBackend:
     def weighted_median(self, x: ArrayLike, weights: ArrayLike) -> JAXArray:
         return self.weighted_quantile(x, weights, 0.5)
 
-    def any(self, x: ArrayLike) -> JAXArray:
+    def any(self, x: JArrayLike) -> JAXArray:
         return jnp.any(x)
 
-    def where(self, cond: ArrayLike, x: ArrayLike, y: ArrayLike) -> JAXArray:
+    def where(self, cond: JArrayLike, x: JArrayLike, y: JArrayLike) -> JAXArray:
         return jnp.where(cond, x, y)
 
-    def sigmoid(self, x: ArrayLike) -> JAXArray:
+    def sigmoid(self, x: JArrayLike) -> JAXArray:
         return jax.nn.sigmoid(x)
 
 
 # Type aliases for convenience
-JAXBackendType = Backend[JAXArray]
+JAXBackendType = Backend[JAXArray, JArrayLike]
 
 # Default backend instance
 backend: JAXBackendType = JAXBackend()

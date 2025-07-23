@@ -1,8 +1,10 @@
+from functools import reduce
+from operator import mul
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy as np
 
-from .backend import Array, backend
+from .backend import Array, ArrayType, backend
 
 
 class AbstractBinning:
@@ -21,6 +23,7 @@ class AbstractBinning:
             mask_dict = {}
         self.bin_indices_dict = bin_indices_dict
         self.mask_dict = mask_dict
+        self._hist_dims = ()
 
     @property
     def required_variables(self) -> List[str]:
@@ -48,18 +51,19 @@ class AbstractBinning:
             raise ValueError(f"Unknown binning type: {binning_type}")
 
     @property
-    def hist_dims(self) -> Tuple[int]:
-        return tuple(len(edges) - 1 for edges in self.bin_edges)
+    def hist_dims(self) -> Tuple[int, ...]:
+        return self._hist_dims
 
     @property
     def nbins(self) -> int:
-        return np.prod(self.hist_dims)
+        return reduce(mul, self.hist_dims, 1)
 
     def build_histogram(
         self,
-        weights: np.ndarray,
-        binning_variables: Tuple[np.ndarray],
-    ) -> np.ndarray:
+        ds_key: str,
+        weights: Array,
+        binning_variables: Tuple[Array | float, ...],
+    ) -> Array:
         raise NotImplementedError
 
 
@@ -74,9 +78,8 @@ class RelaxedBinning(AbstractBinning):
     """
 
     def __init__(
-        self, bin_variable: str, bin_edges: List[float], slope: float, mask: Any = None
+        self, bin_variable: str, bin_edges: ArrayType, slope: float, mask: Any = None
     ):
-        raise NotImplementedError("RelaxedBinning is currently not implemented")
         super().__init__(None, mask)
         self.bin_variable = bin_variable
         self.bin_edges = (backend.array(bin_edges),)
@@ -85,7 +88,9 @@ class RelaxedBinning(AbstractBinning):
         bin_width = backend.diff(self.bin_edges[0])
         if not backend.allclose(bin_width, bin_width[0]):
             raise ValueError("Bin widths must be uniform")
-        self.bin_width = bin_width[0]
+        self.bin_width:float = bin_width[0]
+        self._hist_dims = tuple(len(edges) - 1 for edges in self.bin_edges)
+        raise NotImplementedError("RelaxedBinning is currently not implemented")
 
     @classmethod
     def construct_from(cls, config: Dict[str, Any]) -> "RelaxedBinning":
@@ -100,7 +105,7 @@ class RelaxedBinning(AbstractBinning):
     def required_variables(self) -> List[str]:
         return [self.bin_variable]
 
-    def _tanh_bin_kernel(self, x: np.ndarray, a: float, b: float) -> np.ndarray:
+    def _tanh_bin_kernel(self, x: ArrayType, a: ArrayType, b: ArrayType) -> ArrayType:
         return 0.5 * (
             1 + backend.tanh((x - a) / self.slope) * backend.tanh(-(x - b) / self.slope)
         )
@@ -110,9 +115,9 @@ class RelaxedBinning(AbstractBinning):
 
     def build_histogram(
         self,
-        weights: np.ndarray,
-        binning_variables: Tuple[np.ndarray],
-    ) -> np.ndarray:
+        weights: ArrayType,
+        binning_variables: Tuple[ArrayType],
+    ) -> ArrayType:
         if len(binning_variables) != 1:
             raise ValueError("RelaxedBinning only supports one binning variable")
 

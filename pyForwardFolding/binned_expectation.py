@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from .backend import ArrayType, backend
+from .backend import Array, backend
 from .binning import AbstractBinning
 from .factor import AbstractBinnedFactor
 from .model import Model
@@ -70,24 +70,24 @@ class BinnedExpectation:
 
     def evaluate(
         self,
-        datasets: Dict[str, Dict[str, Union[ArrayType, float]]],
+        datasets: Dict[str, Dict[str, Union[Array, float]]],
         parameter_values: Dict[str, float],
-    ) -> Tuple[ArrayType, ArrayType]:
+    ) -> Tuple[Array, Array]:
         """
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
-            datasets (Dict[str, Dict[str, Union[ArrayType, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
+            datasets (Dict[str, Dict[str, Union[Array, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
             parameter_values (Dict[str, float]): A dictionary of parameter values, where keys are parameter names and values are arrays or scalars.
 
         Returns:
-            Tuple[ArrayType, ArrayType]: A tuple containing:
-                - The histogram weights (ArrayType).
-                - The squared weights (ArrayType) representing the binned expectation.
+            Tuple[Array, Array]: A tuple containing:
+                - The histogram weights (Array).
+                - The squared weights (Array) representing the binned expectation.
         """
 
-        hist = 0
-        hist_ssq = 0
+        hist = backend.zeros(self.binning.hist_dims)
+        hist_ssq = backend.zeros(self.binning.hist_dims)
 
         for model_dskey, model in self.dskey_model_pairs:
             if model_dskey not in datasets:
