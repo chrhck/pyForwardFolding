@@ -1,9 +1,7 @@
 import pickle
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import numpy as np
-
-from .backend import backend
+from .backend import Array, backend
 from .binning import AbstractBinning
 
 
@@ -12,7 +10,7 @@ class AbstractFactor:
     Abstract class representing a per-event factor.
     """
 
-    def __init__(self, name:str, param_mapping: Dict[str, str] = None):
+    def __init__(self, name: str, param_mapping: Optional[Dict[str, str]] = None):
         """
         Initialize the factor with a name and parameter mapping.
         Args:
@@ -20,16 +18,9 @@ class AbstractFactor:
             param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
         """
         self.name = name
-        
         self.param_mapping = param_mapping
-
         self.factor_parameters: List[str] = []
-        self.req_vars: List[str] = []
-
-    @property
-    def required_variables(self) -> List[str]:
-        return self.req_vars
-
+ 
     @property
     def parameter_mapping(self) -> Dict[str, str]:
         if self.param_mapping is None:
@@ -43,15 +34,44 @@ class AbstractFactor:
     
     def evaluate(
         self,
-        input_variables: Dict[str, Union[np.ndarray, float]],
-        parameters: Dict[str, Union[np.ndarray, float]],
-    ) -> np.ndarray:
+        input_variables: Dict[str, Union[Array, float]],
+        parameter_values: Dict[str, float],
+    ) -> Any:
         raise NotImplementedError
 
+
+class AbstractUnbinnedFactor(AbstractFactor):
+    """
+    Abstract class for factors that operate on unbinned data.
+    """
+
+    def __init__(self, name: str, param_mapping: Optional[Dict[str, str]] = None):
+        """
+        Initialize the unbinned factor with a name and parameter mapping.
+        Args:
+            name (str): Identifier for the factor.
+            param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
+        """
+        super().__init__(name, param_mapping)
+        self.req_vars: List[str] = []
+
+    @property
+    def required_variables(self) -> List[str]:
+        return self.req_vars
+
+    def evaluate(
+        self,
+        input_variables: Dict[str, Union[Array, float]],
+        parameter_values: Dict[str, float],
+    ) -> Array:
+        raise NotImplementedError
+    
     @classmethod
-    def construct_from(cls: Type["AbstractFactor"], config: Dict[str, Any]) -> "AbstractFactor":
+    def construct_from(cls: Type["AbstractUnbinnedFactor"], config: Dict[str, Any]) -> "AbstractUnbinnedFactor":
         
         factor_type = config.get("type")
+        if factor_type is None:
+            raise ValueError("Configuration must contain a 'type' key to identify the factor type.")
         factor_class = FACTORSTR_CLASS_MAPPING.get(factor_type)
 
         if factor_class is None:
@@ -59,7 +79,42 @@ class AbstractFactor:
 
         return factor_class.construct_from(config)
 
-def get_required_variable_values(factor, input_variable_values):
+class AbstractBinnedFactor(AbstractFactor):
+    """
+    Abstract base class for factors that contribute to a binned expectation.
+    This class should be inherited by specific implementations of binned factors.
+    """
+
+    def __init__(self, name: str, binning:AbstractBinning, param_mapping: Optional[Dict[str, str]] = None):
+        """
+        Initialize the AbstractBinnedFactor with a name.
+
+        Args:
+            name (str): Identifier for the factor.
+        """
+        super().__init__(name, param_mapping)
+        self.binning = binning
+
+
+    @classmethod
+    def construct_from(cls: Type["AbstractBinnedFactor"], config: Dict[str, Any], binning:AbstractBinning) -> "AbstractBinnedFactor":
+        
+        factor_type = config.get("type")
+        if factor_type is None:
+            raise ValueError("Configuration must contain a 'type' key to identify the factor type.")
+        factor_class = FACTORSTR_CLASS_MAPPING.get(factor_type)
+
+        if factor_class is None:
+            raise ValueError(f"Unknown factor type: {factor_type}")
+
+        return factor_class.construct_from(config, binning)
+
+
+
+def get_required_variable_values(
+    factor: AbstractUnbinnedFactor, 
+    input_variable_values: Dict[str, Union[Array, float]]
+) -> Dict[str, Union[Array, float]]:
     """
     Extract required variable values for a factor from the input dictionary.
 
@@ -74,7 +129,10 @@ def get_required_variable_values(factor, input_variable_values):
     return {var: input_variable_values[var] for var in req_vars}
 
 
-def get_parameter_values(factor, parameter_dict):
+def get_parameter_values(
+    factor: AbstractFactor, 
+    parameter_dict: Dict[str, float]
+) -> Dict[str, float]:
     """
     Extract parameter values for a factor from the parameter dictionary.
 
@@ -91,7 +149,7 @@ def get_parameter_values(factor, parameter_dict):
     return parameter_values
 
 
-class PowerLawFlux(AbstractFactor):
+class PowerLawFlux(AbstractUnbinnedFactor):
     """
     Factor that applies a power law flux model.
 
@@ -103,7 +161,13 @@ class PowerLawFlux(AbstractFactor):
 
     
 
-    def __init__(self, name:str, pivot_energy, baseline_norm, param_mapping: Dict[str, str]=None):
+    def __init__(
+        self, 
+        name: str, 
+        pivot_energy: float, 
+        baseline_norm: float, 
+        param_mapping: Optional[Dict[str, str]] = None
+    ):
         
         super().__init__(name, param_mapping)
 
@@ -124,7 +188,11 @@ class PowerLawFlux(AbstractFactor):
         )
 
 
-    def evaluate(self, input_variables, parameter_values):
+    def evaluate(
+        self, 
+        input_variables: Dict[str, Union[Array, float]], 
+        parameter_values: Dict[str, float]
+    ) -> Array:
         input_values = get_required_variable_values(self, input_variables)
         exposed_values = get_parameter_values(self, parameter_values)
         true_energy = input_values["true_energy"]
@@ -134,7 +202,7 @@ class PowerLawFlux(AbstractFactor):
         return flux_norm * self.baseline_norm * backend.power(true_energy / self.pivot_energy, -spectral_index)
 
 
-class FluxNorm(AbstractFactor):
+class FluxNorm(AbstractUnbinnedFactor):
     """
     Factor that applies a simple flux normalization.
 
@@ -142,7 +210,7 @@ class FluxNorm(AbstractFactor):
         name (str): Identifier for the factor.
     """
 
-    def __init__(self, name:str, param_mapping: Dict[str, str] = None):
+    def __init__(self, name: str, param_mapping: Optional[Dict[str, str]] = None):
         super().__init__(name, param_mapping)
 
         self.factor_parameters = ["flux_norm"]
@@ -156,14 +224,14 @@ class FluxNorm(AbstractFactor):
                 param_mapping=param_mapping,
         )
 
-    def evaluate(self, input_variables, parameter_values):
+    def evaluate(self, input_variables: Dict[str, Union[Array, float]], parameter_values: Dict[str, float]) -> Array:
         exposed_values = get_parameter_values(self, parameter_values)
         flux_norm = exposed_values["flux_norm"]
 
-        return flux_norm
+        return backend.array(flux_norm)
 
 
-class SnowstormGauss(AbstractFactor):
+class SnowstormGauss(AbstractUnbinnedFactor):
     """
     Factor that implements a Gaussian reweighting scheme for systematic uncertainty modeling.
 
@@ -174,7 +242,7 @@ class SnowstormGauss(AbstractFactor):
         req_variable_name (str): Name of the required variable for reweighting.
     """
 
-    def __init__(self, name, sys_gauss_width, sys_sim_bounds, req_variable_name, param_mapping: Dict[str, str] = None):
+    def __init__(self, name, sys_gauss_width, sys_sim_bounds, req_variable_name, param_mapping: Optional[Dict[str, str]] = None):
         super().__init__(name, param_mapping)
 
         self.sys_gauss_width = sys_gauss_width
@@ -209,7 +277,7 @@ class SnowstormGauss(AbstractFactor):
         )        
 
 
-class DeltaGamma(AbstractFactor):
+class DeltaGamma(AbstractUnbinnedFactor):
     """
     Factor that applies a delta gamma scaling.
 
@@ -218,7 +286,7 @@ class DeltaGamma(AbstractFactor):
         reference_energy (float): Reference energy for scaling.
     """
 
-    def __init__(self, name, param_mapping: Dict[str, str] = None, reference_energy: float = 1.0):
+    def __init__(self, name, param_mapping: Optional[Dict[str, str]] = None, reference_energy: float = 1.0):
         super().__init__(name, param_mapping)
         self.reference_energy = reference_energy
 
@@ -244,7 +312,7 @@ class DeltaGamma(AbstractFactor):
         return backend.power(true_energy / self.reference_energy, -delta_gamma)
 
 
-class ModelInterpolator(AbstractFactor):
+class ModelInterpolator(AbstractUnbinnedFactor):
     """
     Interpolation between two models.
 
@@ -257,7 +325,7 @@ class ModelInterpolator(AbstractFactor):
 
     
 
-    def __init__(self, name: str, baseline_weight: Dict[str, str], alternative_weight: Dict[str, str], param_mapping: Dict[str, str] = None):
+    def __init__(self, name: str, baseline_weight: str, alternative_weight: str, param_mapping: Optional[Dict[str, str]] = None):
         super().__init__(name, param_mapping)
         self.base_key = baseline_weight
         self.alt_key = alternative_weight
@@ -274,9 +342,9 @@ class ModelInterpolator(AbstractFactor):
                 param_mapping=param_mapping,
         )
 
-    def evaluate(self, input_variables, parameters):
+    def evaluate(self, input_variables:Dict[str, float | Array] , parameter_values: Dict[str, float]) -> Array:
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_parameter_values(self, parameters)
+        exposed_values = get_parameter_values(self, parameter_values)
         baseline_weight = input_values[self.base_key]
         alternative_weight = input_values[self.alt_key]
         lambda_int = exposed_values["lambda_int"]
@@ -302,7 +370,7 @@ class ModelInterpolator(AbstractFactor):
         return result
 
 
-class GradientReweight(AbstractFactor):
+class GradientReweight(AbstractUnbinnedFactor):
     """
     Gradient reweight application. (e.g barr parameters)
     Requires precalculated gradients.
@@ -313,7 +381,7 @@ class GradientReweight(AbstractFactor):
         baseline_weight (str): Name of the baseline weight variable.
     """
 
-    def __init__(self, name: str, gradient_key_mapping: Dict[str, str], baseline_weight: str, param_mapping: Dict[str, str] = None):
+    def __init__(self, name: str, gradient_key_mapping: Dict[str, str], baseline_weight: str, param_mapping: Optional[Dict[str, str]] = None):
         super().__init__(name, param_mapping)
         self.baseline_weight = baseline_weight
         self.grad_key_map = gradient_key_mapping
@@ -330,11 +398,11 @@ class GradientReweight(AbstractFactor):
                 param_mapping=param_mapping,
         )
 
-    def evaluate(self, input_variables, parameters):
+    def evaluate(self, input_variables:Dict[str, float | Array], parameter_values:Dict[str, float]) -> Array:
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_parameter_values(self, parameters)
+        exposed_values = get_parameter_values(self, parameter_values)
         baseline = input_values[self.baseline_weight]
-        reweight = baseline
+        reweight = backend.array(baseline)
         for par in self.factor_parameters:
             par_gradient = input_variables[self.grad_key_map[par]]
             par_value = exposed_values[par]
@@ -342,7 +410,7 @@ class GradientReweight(AbstractFactor):
         return reweight/baseline
 
 
-class VetoThreshold(AbstractFactor):
+class VetoThreshold(AbstractUnbinnedFactor):
     """
     Changes the atm. passing fraction according to a second-order expansion of
     log10(splined_passing_fraction)
@@ -358,7 +426,7 @@ class VetoThreshold(AbstractFactor):
             threshold_c,
             rescale_energy,
             anchor_energy,
-            param_mapping: Dict[str, str] = None):
+            param_mapping: Optional[Dict[str, str]] = None):
         """
         Read fir coefficients as well as anchor energy [GeV]
 
@@ -391,10 +459,10 @@ class VetoThreshold(AbstractFactor):
                 param_mapping=param_mapping,
         )
 
-    def evaluate(self, input_variables, parameters):
+    def evaluate(self, input_variables: Dict[str, float | Array], parameter_values: Dict[str, float]) -> Array:
 
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_parameter_values(self, parameters)
+        exposed_values = get_parameter_values(self, parameter_values)
         e_threshold = exposed_values["e_threshold"]
         a = input_values[self.a]
         b = input_values[self.b]
@@ -416,11 +484,11 @@ class VetoThreshold(AbstractFactor):
         return reweight
 
 
-class SoftCut(AbstractFactor):
+class SoftCut(AbstractUnbinnedFactor):
     """Factor for a soft cut on a specific variable"""
 
 
-    def __init__(self, name: str, cut_variable:str, slope:float, param_mapping: Dict[str, str] = None):
+    def __init__(self, name: str, cut_variable:str, slope:float, param_mapping: Optional[Dict[str, str]] = None):
         super().__init__(name, param_mapping)
 
         self.cut_variable = cut_variable
@@ -439,45 +507,16 @@ class SoftCut(AbstractFactor):
                 param_mapping=param_mapping,
         )
     
-    def evaluate(self, input_variables, parameters):
+    def evaluate(self, input_variables: Dict[str, float | Array], parameter_values: Dict[str, float]) -> Array:
         input_values = get_required_variable_values(self, input_variables)
-        exposed_values = get_parameter_values(self, parameters)
-        
-        cut_var = input_values[self.cut_variable]
+        exposed_values = get_parameter_values(self, parameter_values)
+
+        cut_var = backend.asarray(input_values[self.cut_variable])
         cut_val = exposed_values["soft_cut"]
 
                 
         return backend.sigmoid(self.slope*(cut_var - cut_val))
 
-
-class AbstractBinnedFactor(AbstractFactor):
-    """
-    Abstract base class for factors that contribute to a binned expectation.
-    This class should be inherited by specific implementations of binned factors.
-    """
-
-    def __init__(self, name: str, binning:AbstractBinning, param_mapping: Dict[str, str] = None):
-        """
-        Initialize the AbstractBinnedFactor with a name.
-
-        Args:
-            name (str): Identifier for the factor.
-        """
-        super().__init__(name, param_mapping)
-        self.binning = binning
-
-
-    @classmethod
-    def construct_from(cls: Type["AbstractFactor"], config: Dict[str, Any], binning:AbstractBinning) -> "AbstractFactor":
-        
-        factor_type = config.get("type")
-        factor_class = FACTORSTR_CLASS_MAPPING.get(factor_type)
-
-
-        if factor_class is None:
-            raise ValueError(f"Unknown factor type: {factor_type}")
-
-        return factor_class.construct_from(config, binning)
 
 class SnowStormGradient(AbstractBinnedFactor):
 
@@ -493,9 +532,9 @@ class SnowStormGradient(AbstractBinnedFactor):
         parameters: List[str],
         gradient_names: List[str],
         default: List[float],
-        split_values: List[Tuple],
+        split_values: List[float],
         gradient_pickle: str,
-        param_mapping: Dict[str, str] = None
+        param_mapping: Optional[Dict[str, str]] = None
 
     ):
         """
@@ -530,6 +569,14 @@ class SnowStormGradient(AbstractBinnedFactor):
 
         ndim_grads = [len(be)-1 for be in self.gradients["binning"]]
 
+        for gname in self.gradient_names:
+            grad = self.gradients[gname]
+            if grad.shape != ndim_grads:
+                raise ValueError(
+                    f"Gradient '{gname}' has shape {grad.shape}, expected {ndim_grads}"
+                )
+
+
         if list(self.binning.hist_dims) != ndim_grads:
             raise ValueError(
                 f"Mismatch between binning dimensions ({self.binning.hist_dims}) and gradient dimensions ({ndim_grads})"
@@ -551,7 +598,7 @@ class SnowStormGradient(AbstractBinnedFactor):
             param_mapping = config.get("param_mapping", None)
         )
 
-    def evaluate(self, input_variables, parameters):
+    def evaluate(self, input_variables, parameter_values: Dict[str, float]) -> Tuple[Array, Array]:
         """
         Evaluate the systematic parameter gradient for the given
         detector configuration and the given exposed variables.
@@ -561,20 +608,20 @@ class SnowStormGradient(AbstractBinnedFactor):
         t_gradients = float(
             self.gradients["livetime"]
         )
-        exposed_values = get_parameter_values(self, parameters)
+        exposed_values = get_parameter_values(self, parameter_values)
 
         # calculate variation of systematic parameters w.r.t. split
         #   value in order to correctly relate to the gradient dict.
         #   Overall parameter shifts are taken into account here so
         #   that gradients are applied w.r.t. their split value
         #   but the fit parameter itself corresponds to the shifted value
-        mu_add = 0
-        ssq_add = 0
+        mu_add = backend.zeros(self.binning.hist_dims)
+        ssq_add = backend.zeros(self.binning.hist_dims)
 
 
         for i, sys_par in enumerate(self.exposed_parameters):
             sys_val = exposed_values[sys_par]
-            gradient = self.gradients[self.gradient_names[i]]
+            gradient: Array = self.gradients[self.gradient_names[i]]
 
             mu_add += (sys_val - self.split_values[i]) *\
                 gradient["gradient"]
@@ -585,7 +632,7 @@ class SnowStormGradient(AbstractBinnedFactor):
 
 
 class ScaledTemplate(AbstractBinnedFactor):
-    def __init__(self, name: str, binning: AbstractBinning, template_file: str, param_mapping: Dict[str, str] = None):
+    def __init__(self, name: str, binning: AbstractBinning, template_file: str, param_mapping: Optional[Dict[str, str]] = None):
 
         super().__init__(name, binning, param_mapping)
 
@@ -603,8 +650,8 @@ class ScaledTemplate(AbstractBinnedFactor):
             param_mapping = config.get("param_mapping", None)
         )
 
-    def evaluate(self, input_variables, parameters):
-        exposed_values = get_parameter_values(self, parameters)
+    def evaluate(self, input_variables, parameter_values: Dict[str, float]) -> Tuple[Array, Optional[Array]]:
+        exposed_values = get_parameter_values(self, parameter_values)
         template_norm = exposed_values["template_norm"]
 
         # TODO: compare template binning with configured one

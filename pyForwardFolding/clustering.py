@@ -1,8 +1,16 @@
+from typing import Dict, List
+
 import numpy as np
 from sklearn.cluster import HDBSCAN, MiniBatchKMeans
 
 
-def compress_hdbscan(data, weight_keys, min_cluster_size=5):
+def compress_hdbscan(
+    data: Dict[str, np.ndarray], 
+    weight_keys: List[str], 
+    min_cluster_size: int = 5
+) -> Dict[str, np.ndarray]:
+    # Use all keys that are not weight keys as observables
+    observables = [key for key in data.keys() if key not in weight_keys]
     X = np.vstack([data[obs] for obs in observables]).T
     hdb = HDBSCAN(min_cluster_size=min_cluster_size)
     hdb.fit(X)
@@ -29,9 +37,18 @@ def compress_hdbscan(data, weight_keys, min_cluster_size=5):
 
     return compressed
 
-def compress_minibatch_kmeans(data, weight_keys, compression_factor=10):
-
-    n_clusters = int(np.ceil(len(next(iter(data.values()))) / compression_factor))
+def compress_minibatch_kmeans(
+    data: Dict[str, np.ndarray], 
+    weight_keys: List[str], 
+    compression_factor: int = 10
+) -> Dict[str, np.ndarray]:
+    n_events = len(next(iter(data.values())))
+    
+    # Handle empty data
+    if n_events == 0:
+        return {dkey: np.array([]) for dkey in data.keys()}
+    
+    n_clusters = max(1, int(np.ceil(n_events / compression_factor)))
 
     X = np.vstack([data[key] for key in data.keys() if key not in weight_keys]).T
     kmeans = MiniBatchKMeans(n_clusters=n_clusters)

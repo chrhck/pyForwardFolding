@@ -2,6 +2,7 @@ from typing import Dict, List, Set, Tuple, Union
 
 import numpy as np
 
+from .backend import Array
 from .model_component import ModelComponent
 
 
@@ -76,27 +77,23 @@ class Model:
 
     def evaluate(
         self,
-        input_variables: Dict[str, Union[np.ndarray, float]],
-        parameter_values: Dict[str, Union[np.ndarray, float]],
-    ) -> np.ndarray:
+        input_variables: Dict[str, Union[Array, float]],
+        parameter_values: Dict[str, float],
+    ) -> Array:
         """
         Evaluate the model by computing the sum of all components.
 
         Args:
-            input_variables (Dict[str, Union[np.ndarray, float]]): Input variables for model evaluation.
-            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
+            input_variables (Dict[str, Union[Array, float]]): Input variables for model evaluation.
+            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated components.
 
         Returns:
-            np.ndarray: The modified `output` containing the sum of all components.
+            Array: The modified `output` containing the sum of all components.
 
         Raises:
             ValueError: If any baseline weight is not found in the input variables.
         """
 
-        # Ensure all input variables have the same length
-        input_var_lengths = [len(value) if isinstance(value, np.ndarray) else 1 for value in input_variables.values()]
-        if not all(length == input_var_lengths[0] for length in input_var_lengths):
-            raise ValueError("All input variables must have the same length")
         output = 0.
         for component, baseline_weight in zip(self.components, self.baseline_weights):
             # Get the baseline weight value
@@ -118,22 +115,22 @@ class Model:
 
     def evaluate_per_component(
                     self,
-        input_variables: Dict[str, Union[np.ndarray, float]],
-        parameter_values: Dict[str, Union[np.ndarray, float]],
-    ) -> Dict[str, Union[np.ndarray, float]]:
+        input_variables: Dict[str, Union[Array, float]],
+        parameter_values: Dict[str, Union[Array, float]],
+    ) -> Dict[str, Union[Array, float]]:
         """
         Evaluate each component of the model individually.
         Args:
-            input_variables (Dict[str, Union[np.ndarray, float]]): Input variables for model evaluation.
-            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated components.
+            input_variables (Dict[str, Union[Array, float]]): Input variables for model evaluation.
+            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated components.
         Returns:
-            Dict[str, Union[np.ndarray, float]]: A dictionary containing evaluation results for each component.
+            Dict[str, Union[Array, float]]: A dictionary containing evaluation results for each component.
         Raises:
             ValueError: If any baseline weight is not found in the input variables.
         """
 
         # Ensure all input variables have the same length
-        input_var_lengths = [len(value) if isinstance(value, np.ndarray) else 1 for value in input_variables.values()]
+        input_var_lengths = [len(value) if isinstance(value, Array) else 1 for value in input_variables.values()]
         if not all(length == input_var_lengths[0] for length in input_var_lengths):
             raise ValueError("All input variables must have the same length")
         output = {}
