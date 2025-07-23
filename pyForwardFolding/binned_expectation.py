@@ -104,7 +104,7 @@ class BinnedExpectation:
             weight_sq = backend.power(weights, 2)
             # Extract binning variables
             binning_variables = tuple(
-                input_variables[var] for var in self.binning.required_variables
+                backend.asarray(input_variables[var]) for var in self.binning.required_variables
             )
 
             # Build histograms
@@ -117,29 +117,29 @@ class BinnedExpectation:
                 * self.lifetime**2
             )
 
-        # Add contributions from binned factors
-        for factor in self.binned_factors:
-            # TODO: Update logic. Do we want to store the bin edges in the factor?
+            # Add contributions from binned factors
+            for factor in self.binned_factors:
+                # TODO: Update logic. Do we want to store the bin edges in the factor?
 
-            # if isinstance(self.binning, RectangularBinning):
-            #     if factor.bin_edges is None:
-            #         raise ValueError("Binned factors must have bin_edges defined.")
-            #     else:
-            #         for j, bin_edge in enumerate(self.binning.bin_edges):
-            #             print("Set binning", bin_edge)
-            #             print("Loaded Binning", factor.bin_edges[self.det_config][j])
-            #             np.testing.assert_array_almost_equal(
-            #                 bin_edge,
-            #                 factor.bin_edges[self.det_config][j],
-            #                 err_msg=f"Binned factor {factor.name} has different bin edges than the binning."
-            #             )
-            hist_add, hist_ssq_add = factor.evaluate(
-                input_variables,
-                parameter_values,
-            )
-            hist += hist_add * self.lifetime
-            if hist_ssq_add is not None:
-                hist_ssq += hist_ssq_add * self.lifetime**2
+                # if isinstance(self.binning, RectangularBinning):
+                #     if factor.bin_edges is None:
+                #         raise ValueError("Binned factors must have bin_edges defined.")
+                #     else:
+                #         for j, bin_edge in enumerate(self.binning.bin_edges):
+                #             print("Set binning", bin_edge)
+                #             print("Loaded Binning", factor.bin_edges[self.det_config][j])
+                #             np.testing.assert_array_almost_equal(
+                #                 bin_edge,
+                #                 factor.bin_edges[self.det_config][j],
+                #                 err_msg=f"Binned factor {factor.name} has different bin edges than the binning."
+                #             )
+                hist_add, hist_ssq_add = factor.evaluate(
+                    input_variables,
+                    parameter_values,
+                )
+                hist += hist_add * self.lifetime
+                if hist_ssq_add is not None:
+                    hist_ssq += hist_ssq_add * self.lifetime**2
 
         # Clamp values to avoid negative or infinite values
         hist = backend.clip(hist, 0, float("inf"))

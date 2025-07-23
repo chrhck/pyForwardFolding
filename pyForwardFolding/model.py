@@ -1,6 +1,6 @@
 from typing import Dict, List, Set, Tuple, Union
 
-from .backend import Array
+from .backend import Array, backend
 from .model_component import ModelComponent
 
 
@@ -73,12 +73,12 @@ class Model:
         }
 
     @property
-    def parameter_mapping(self) -> Dict[str, Dict[str, str]]:
+    def parameter_mapping(self) -> Dict[str, Dict[str, Dict[str, str]]]:
         """
         Get the mapping of model parameters to their respective components.
 
         Returns:
-            Dict[str, Dict[str, str]]: A dictionary mapping component names to their parameter names.
+            Dict[str, Dict[str, Dict[str, str]]]: A dictionary mapping component names to their parameter names.
         """
         return {
             component.name: component.parameter_mapping for component in self.components
@@ -103,7 +103,7 @@ class Model:
             ValueError: If any baseline weight is not found in the input variables.
         """
 
-        output = 0.0
+        output = backend.array(0.0)
         for component, baseline_weight in zip(self.components, self.baseline_weights):
             # Get the baseline weight value
             baseline_weight_value = input_variables.get(baseline_weight, None)
@@ -126,13 +126,13 @@ class Model:
     def evaluate_per_component(
         self,
         input_variables: Dict[str, Union[Array, float]],
-        parameter_values: Dict[str, Union[Array, float]],
+        parameter_values: Dict[str, float],
     ) -> Dict[str, Union[Array, float]]:
         """
         Evaluate each component of the model individually.
         Args:
             input_variables (Dict[str, Union[Array, float]]): Input variables for model evaluation.
-            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated components.
+            parameter_values (Dict[str, float]): Variables exposed by previously evaluated components.
         Returns:
             Dict[str, Union[Array, float]]: A dictionary containing evaluation results for each component.
         Raises:

@@ -27,9 +27,9 @@ class AbstractLikelihood:
         self,
         observed_data: Dict[str, Array],
         datasets: Dict[str, Dict[str, Union[Array, float]]],
-        exposed_variables: Dict[str, Dict[str, Union[Array, float]]],
+        parameter_values: Dict[str, float],
         empty_bins: str = "skip",
-    ) -> float:
+    ) -> Array:
         raise NotImplementedError
 
 
@@ -48,16 +48,16 @@ class PoissonLikelihood(AbstractLikelihood):
         self,
         observed_data: Dict[str, Array],
         datasets: Dict[str, Dict[str, Union[Array, float]]],
-        exposed_variables: Dict[str, Dict[str, Union[Array, float]]],
+        parameter_values:  Dict[str, float],
         empty_bins: str = "skip",
-    ) -> float:
+    ) -> Array:
         """
         Compute the log-likelihood between model predictions and observed data assuming Poisson statistics.
 
         Args:
             observed_data (Dict[str, Array]): A dictionary mapping component names to observed data.
-            datasets (Dict[str, Dict[str, Union[Array, float]]]): Input datasets for the model evaluation.
-            exposed_variables (Dict[str, Dict[str, Union[Array, float]]]): Variables exposed by previously evaluated components.
+            datasets ( Dict[str, float]): Input datasets for the model evaluation.
+            parameter_values (Dict[str, float]): Variables exposed by previously evaluated components.
             empty_bins (str): Strategy for handling empty bins (`"skip"` or `"throw"`).
 
         Returns:
@@ -67,8 +67,8 @@ class PoissonLikelihood(AbstractLikelihood):
             ValueError: If empty bins are encountered and `empty_bins="throw"`.
         """
         # Evaluate the analysis
-        ana_eval, ana_eval_ssq = self.analysis.evaluate(datasets, exposed_variables)
-        llh = 0.0
+        ana_eval, ana_eval_ssq = self.analysis.evaluate(datasets, parameter_values)
+        llh = backend.array(0.0)
 
         for comp_name, comp_eval in ana_eval.items():
             obs = observed_data.get(comp_name)
@@ -101,7 +101,7 @@ class PoissonLikelihood(AbstractLikelihood):
 
 
 class AbstractPrior:
-    def log_pdf(self, exposed_variables):
+    def log_pdf(self, parameter_values: Dict[str, float]) -> float:
         raise NotImplementedError
 
 
@@ -109,10 +109,10 @@ class GaussianUnivariatePrior(AbstractPrior):
     def __init__(self, prior_params: Dict[str, Tuple[float, float]]):
         self.prior_params = prior_params
 
-    def log_pdf(self, exposed_parameters):
+    def log_pdf(self, parameter_values):
         llh = 0
         for par, (mean, std) in self.prior_params.items():
-            llh += (exposed_parameters[par] - mean) ** 2 / std**2
+            llh += (parameter_values[par] - mean) ** 2 / std**2
         return llh
 
 
@@ -130,12 +130,12 @@ class SAYLikelihood(AbstractLikelihood):
         self,
         observed_data: Dict[str, Array],
         datasets: Dict[str, Dict[str, Union[Array, float]]],
-        exposed_variables: Dict[str, Dict[str, Union[Array, float]]],
+        parameter_values: Dict[str, float],
         empty_bins: str = "skip",
-    ) -> float:
+    ) -> Array:
         # Evaluate the analysis
-        ana_eval, ana_eval_ssq = self.analysis.evaluate(datasets, exposed_variables)
-        total_llh = 0.0
+        ana_eval, ana_eval_ssq = self.analysis.evaluate(datasets, parameter_values)
+        total_llh = backend.array(0.0)
 
         for comp_name, comp_eval in ana_eval.items():
             obs = observed_data.get(comp_name)

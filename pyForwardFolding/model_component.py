@@ -1,8 +1,7 @@
 from typing import Dict, List, Set, Union
 
-import numpy as np
-
-from .factor import AbstractFactor
+from .backend import Array
+from .factor import AbstractUnbinnedFactor
 
 
 class ModelComponent:
@@ -11,13 +10,13 @@ class ModelComponent:
 
     Args:
         name (str): The name of the component.
-        factors (List[AbstractFactor]): A list of factors that make up this component.
+        factors (List[AbstractUnbinnedFactor]): A list of factors that make up this component.
 
     Notes:
         - Factor names must be unique within a component.
     """
 
-    def __init__(self, name: str, factors: List[AbstractFactor]):
+    def __init__(self, name: str, factors: List[AbstractUnbinnedFactor]):
         self.name = name
         self.factors = factors
 
@@ -40,7 +39,7 @@ class ModelComponent:
         return exposed
 
     @property
-    def parameter_mapping(self) -> Dict[str, str]:
+    def parameter_mapping(self) -> Dict[str, Dict[str, str]]:
         """
         Get the mapping of parameters to their corresponding factor names.
 
@@ -61,19 +60,19 @@ class ModelComponent:
 
     def evaluate(
         self,
-        input_variables: Dict[str, Union[np.ndarray, float]],
-        parameter_values: Dict[str, Union[np.ndarray, float]],
-    ) -> np.ndarray:
+        input_variables: Dict[str, Union[Array, float]],
+        parameter_values: Dict[str, float],
+    ) -> Array:
         """
         Evaluate all factors in the model component in sequence, updating the output.
 
         Args:
-            output (np.ndarray): Vector that will be modified by the evaluation.
-            input_variables (Dict[str, Union[np.ndarray, float]]): Variables available as inputs to the factors.
-            parameter_values (Dict[str, Union[np.ndarray, float]]): Variables exposed by previously evaluated factors.
+            output (Array): Vector that will be modified by the evaluation.
+            input_variables (Dict[str, Union[Array, float]]): Variables available as inputs to the factors.
+            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated factors.
 
         Returns:
-            np.ndarray: The modified output vector.
+            Array: The modified output vector.
         """
 
         output = 1.0
@@ -81,4 +80,4 @@ class ModelComponent:
         for factor in self.factors:
             output *= factor.evaluate(input_variables, parameter_values)
 
-        return output
+        return output # type: ignore
