@@ -14,6 +14,7 @@ class Analysis:
     Args:
         expectations (Dict[str, BinnedExpectation]): Dictionary mapping expectation names to their objects.
     """
+
     def __init__(self, expectations: Dict[str, BinnedExpectation]):
         self.expectations = expectations
 
@@ -25,7 +26,9 @@ class Analysis:
         Returns:
             Set[str]: A set containing all required variables.
         """
-        return set.union(*(comp.required_variables for comp in self.expectations.values()))
+        return set.union(
+            *(comp.required_variables for comp in self.expectations.values())
+        )
 
     @property
     def exposed_parameters(self) -> Set[str]:
@@ -61,7 +64,6 @@ class Analysis:
         output_ssq_dict = {}
 
         for comp_name, comp in self.expectations.items():
-           
             # Evaluate the component
             hist, hist_ssq = comp.evaluate(
                 datasets,
@@ -183,7 +185,7 @@ class Analysis:
             str: A string representation of the analysis.
         """
         return f"Analysis with {len(self.expectations)} expectations: {', '.join(self.expectations.keys())}"
-    
+
     def __getitem__(self, item: str) -> BinnedExpectation:
         """
         Get a specific expectation by name.
@@ -195,4 +197,3 @@ class Analysis:
             BinnedExpectation: The corresponding expectation object.
         """
         return self.expectations[item]
-    

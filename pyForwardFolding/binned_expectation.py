@@ -17,13 +17,15 @@ class BinnedExpectation:
         binned_factors (Optional[List[AbstractBinnedFactor]]): Factors to be added to the histogram.
         lifetime (float): Lifetime of the binned expectation.
     """
-    def __init__(self,
-                 name: str,
-                 dskey_model_pairs: List[Tuple[str, Model]],
-                 binning: AbstractBinning,
-                 binned_factors: Optional[List[AbstractBinnedFactor]] = None,
-                 lifetime: float = 1.0,
-                ):
+
+    def __init__(
+        self,
+        name: str,
+        dskey_model_pairs: List[Tuple[str, Model]],
+        binning: AbstractBinning,
+        binned_factors: Optional[List[AbstractBinnedFactor]] = None,
+        lifetime: float = 1.0,
+    ):
         self.name = name
         self.dskey_model_pairs = dskey_model_pairs
         self.models = [model for _, model in dskey_model_pairs]
@@ -56,12 +58,14 @@ class BinnedExpectation:
         """
 
         model_exposed = set()
-        
+
         for model in self.models:
             model_exposed.update(model.exposed_parameters)
 
-        bf_exposed = {par for factor in self.binned_factors for par in factor.exposed_parameters}
-        
+        bf_exposed = {
+            par for factor in self.binned_factors for par in factor.exposed_parameters
+        }
+
         return model_exposed | bf_exposed
 
     def evaluate(
@@ -87,32 +91,36 @@ class BinnedExpectation:
 
         for model_dskey, model in self.dskey_model_pairs:
             if model_dskey not in datasets:
-                raise ValueError(f"Dataset '{model_dskey}' not found in provided datasets.")
+                raise ValueError(
+                    f"Dataset '{model_dskey}' not found in provided datasets."
+                )
             input_variables = datasets[model_dskey]
 
             # Evaluate the model to get weights
-            weights = model.evaluate(input_variables,
-                                     parameter_values,)
+            weights = model.evaluate(
+                input_variables,
+                parameter_values,
+            )
             weight_sq = backend.power(weights, 2)
             # Extract binning variables
-            binning_variables = tuple(input_variables[var] for var in self.binning.required_variables)
+            binning_variables = tuple(
+                input_variables[var] for var in self.binning.required_variables
+            )
 
             # Build histograms
-            hist += self.binning.build_histogram(
-                model_dskey,
-                weights,
-                binning_variables
-                )*self.lifetime
-            hist_ssq += self.binning.build_histogram(
-                model_dskey,
-                weight_sq,
-                binning_variables
-                )*self.lifetime**2
+            hist += (
+                self.binning.build_histogram(model_dskey, weights, binning_variables)
+                * self.lifetime
+            )
+            hist_ssq += (
+                self.binning.build_histogram(model_dskey, weight_sq, binning_variables)
+                * self.lifetime**2
+            )
 
         # Add contributions from binned factors
         for factor in self.binned_factors:
             # TODO: Update logic. Do we want to store the bin edges in the factor?
-            
+
             # if isinstance(self.binning, RectangularBinning):
             #     if factor.bin_edges is None:
             #         raise ValueError("Binned factors must have bin_edges defined.")
@@ -125,12 +133,13 @@ class BinnedExpectation:
             #                 factor.bin_edges[self.det_config][j],
             #                 err_msg=f"Binned factor {factor.name} has different bin edges than the binning."
             #             )
-            hist_add, hist_ssq_add = factor.evaluate(input_variables,
-                                                     parameter_values,
-                                                    )
-            hist += hist_add*self.lifetime
+            hist_add, hist_ssq_add = factor.evaluate(
+                input_variables,
+                parameter_values,
+            )
+            hist += hist_add * self.lifetime
             if hist_ssq_add is not None:
-                hist_ssq += hist_ssq_add*self.lifetime**2
+                hist_ssq += hist_ssq_add * self.lifetime**2
 
         # Clamp values to avoid negative or infinite values
         hist = backend.clip(hist, 0, float("inf"))
