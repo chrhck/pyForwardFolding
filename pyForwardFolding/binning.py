@@ -35,9 +35,7 @@ class AbstractBinning:
             AbstractBinning: An instance of a subclass of AbstractBinning.
         """
         binning_type = config.get("type")
-        if binning_type == "CustomBinning":
-            return CustomBinning(bin_indices=config["bin_indices"])
-        elif binning_type == "RelaxedBinning":
+        if binning_type == "RelaxedBinning":
             return RelaxedBinning.construct_from(config)
         elif binning_type == "RectangularBinning":
             return RectangularBinning.construct_from(config)

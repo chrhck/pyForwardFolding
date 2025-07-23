@@ -119,6 +119,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 src = ["pyForwardFolding", "tests"]
+extend-exclude = ["examples"]
 
 [tool.ruff.format]
 docstring-code-format = true
