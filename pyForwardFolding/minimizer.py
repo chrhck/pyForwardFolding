@@ -10,7 +10,7 @@ from .likelihood import AbstractLikelihood, AbstractPrior, GaussianUnivariatePri
 
 def flat_index_dict_mapping(
     exp_vars: Set[str], fixed_params: Optional[Dict[str, Any]] = None
-) -> Dict[str, Dict[str, int]]:
+) -> Dict[str, int]:
     """
     Create a mapping of variable names to flat indices for optimization.
 
@@ -153,7 +153,7 @@ class AbstractMinimizer:
         self.llh = llh
         self.obs = obs
         self.dataset = dataset
-        self.priors = []
+        self.priors: List[AbstractPrior] = []
         self.priors.append(GaussianUnivariatePrior(priors))
         self.fixed_pars = fixed_pars
 

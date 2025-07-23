@@ -21,7 +21,7 @@ class AbstractBinning:
             mask_dict = {}
         self.bin_indices_dict = bin_indices_dict
         self.mask_dict = mask_dict
-        self._hist_dims = ()
+        self._hist_dims: Tuple[int, ...] = ()
 
     @property
     def required_variables(self) -> List[str]:
@@ -145,14 +145,14 @@ class RectangularBinning(AbstractBinning):
 
     Args:
         bin_variables (Tuple[str]): The variables used for binning.
-        bin_edges (Tuple[List[float]]): The edges of the bins for each variable.
+        bin_edges (List[Array]): The edges of the bins for each variable.
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
     """
 
     def __init__(
         self,
         bin_variables: Tuple[str],
-        bin_edges: Tuple[List[float]],
+        bin_edges: Tuple[Array, ...],
         bin_indices_dict: Optional[Dict[str, List[Tuple[int]]]] = None,
         mask_dict: Optional[Dict[str, Any]] = None,
     ):

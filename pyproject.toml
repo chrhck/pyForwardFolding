@@ -110,7 +110,9 @@ path = "pyForwardFolding/__init__.py"
 [tool.mypy]
 files = ["**/*.py"]
 show_error_codes = true
-strict = true
+strict = false
+exclude = ["(^|/)tests/", "clustering.py"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "-q"

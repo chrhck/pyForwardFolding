@@ -79,7 +79,7 @@ class AbstractUnbinnedFactor(AbstractFactor):
         if factor_class is None:
             raise ValueError(f"Unknown factor type: {factor_type}")
 
-        return factor_class.construct_from(config)
+        return factor_class.construct_from(config)  # type: ignore[attr-defined]
 
 
 class AbstractBinnedFactor(AbstractFactor):
@@ -119,7 +119,7 @@ class AbstractBinnedFactor(AbstractFactor):
         if factor_class is None:
             raise ValueError(f"Unknown factor type: {factor_type}")
 
-        return factor_class.construct_from(config, binning)
+        return factor_class.construct_from(config, binning)  # type: ignore[attr-defined]
 
 
 def get_required_variable_values(

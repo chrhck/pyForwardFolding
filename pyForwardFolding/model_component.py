@@ -1,6 +1,6 @@
 from typing import Dict, List, Set, Union
 
-from .backend import Array
+from .backend import Array, backend
 from .factor import AbstractUnbinnedFactor
 
 
@@ -75,7 +75,7 @@ class ModelComponent:
             Array: The modified output vector.
         """
 
-        output = 1.0
+        output = backend.array(1.0)
 
         for factor in self.factors:
             output *= factor.evaluate(input_variables, parameter_values)

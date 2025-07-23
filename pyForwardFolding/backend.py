@@ -281,19 +281,25 @@ class JAXBackend:
         # Apply sign correction for negative values
         return jnp.where(x >= 0, erf_pos, -erf_pos)
 
-    def gauss_pdf(self, x: ArrayLike, mu: Any, sigma: Any) -> JAXArray:
+    def gauss_pdf(self, x: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> JAXArray:
         x = jnp.asarray(x)
+        mu = jnp.asarray(mu)
+        sigma = jnp.asarray(sigma)
         return (
             1.0 / (sigma * self.sqrt(2 * pi)) * self.exp(-0.5 * ((x - mu) / sigma) ** 2)
         )
 
-    def gauss_cdf(self, x: ArrayLike, mu: Any, sigma: Any) -> JAXArray:
+    def gauss_cdf(self, x: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> JAXArray:
         x = jnp.asarray(x)
+        mu = jnp.asarray(mu)
+        sigma = jnp.asarray(sigma)
         return 0.5 * (1.0 + self.fasterf((x - mu) / (sigma * self.sqrt(2.0))))
 
-    def uniform_pdf(self, x: ArrayLike, lo: Any, hi: Any) -> JAXArray:
+    def uniform_pdf(self, x: ArrayLike, lo: ArrayLike, hi: ArrayLike) -> JAXArray:
         # Uniform PDF is 1/(hi-lo) if lo <= x <= hi, 0 otherwise
         x = jnp.asarray(x)
+        lo = jnp.asarray(lo)
+        hi = jnp.asarray(hi)
         pdf_value = 1.0 / (hi - lo)
         result = jnp.where((x >= lo) & (x <= hi), pdf_value, 0.0)
         # Ensure we return a JAXArray, not a tuple
@@ -441,7 +447,7 @@ class JAXBackend:
 
     def sigmoid(self, x: ArrayLike) -> JAXArray:
         x = jnp.asarray(x)
-        return jax.nn.sigmoid(x)
+        return jnp.asarray(jax.nn.sigmoid(x))
 
 
 # Type aliases for convenience

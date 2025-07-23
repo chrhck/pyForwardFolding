@@ -146,7 +146,7 @@ class Model:
         ]
         if not all(length == input_var_lengths[0] for length in input_var_lengths):
             raise ValueError("All input variables must have the same length")
-        output = {}
+        output: Dict[str, Union[Array, float]] = {}
         for component, baseline_weight in zip(self.components, self.baseline_weights):
             # Get the baseline weight value
             baseline_weight_value = input_variables.get(baseline_weight, None)
