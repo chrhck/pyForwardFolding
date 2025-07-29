@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from .backend import ArrayType, backend
+from .backend import Array, backend
 from .binning import AbstractBinning
 from .factor import AbstractBinnedFactor
 from .model import Model
@@ -70,24 +70,24 @@ class BinnedExpectation:
 
     def evaluate(
         self,
-        datasets: Dict[str, Dict[str, Union[ArrayType, float]]],
+        datasets: Dict[str, Dict[str, Union[Array, float]]],
         parameter_values: Dict[str, float],
-    ) -> Tuple[ArrayType, ArrayType]:
+    ) -> Tuple[Array, Array]:
         """
         Evaluate a binned expectation by creating a weighted histogram.
 
         Args:
-            datasets (Dict[str, Dict[str, Union[ArrayType, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
+            datasets (Dict[str, Dict[str, Union[Array, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
             parameter_values (Dict[str, float]): A dictionary of parameter values, where keys are parameter names and values are arrays or scalars.
 
         Returns:
-            Tuple[ArrayType, ArrayType]: A tuple containing:
-                - The histogram weights (ArrayType).
-                - The squared weights (ArrayType) representing the binned expectation.
+            Tuple[Array, Array]: A tuple containing:
+                - The histogram weights (Array).
+                - The squared weights (Array) representing the binned expectation.
         """
 
-        hist = 0
-        hist_ssq = 0
+        hist = backend.zeros(self.binning.hist_dims)
+        hist_ssq = backend.zeros(self.binning.hist_dims)
 
         for model_dskey, model in self.dskey_model_pairs:
             if model_dskey not in datasets:
@@ -104,7 +104,8 @@ class BinnedExpectation:
             weight_sq = backend.power(weights, 2)
             # Extract binning variables
             binning_variables = tuple(
-                input_variables[var] for var in self.binning.required_variables
+                backend.asarray(input_variables[var])
+                for var in self.binning.required_variables
             )
 
             # Build histograms
@@ -117,29 +118,29 @@ class BinnedExpectation:
                 * self.lifetime**2
             )
 
-        # Add contributions from binned factors
-        for factor in self.binned_factors:
-            # TODO: Update logic. Do we want to store the bin edges in the factor?
+            # Add contributions from binned factors
+            for factor in self.binned_factors:
+                # TODO: Update logic. Do we want to store the bin edges in the factor?
 
-            # if isinstance(self.binning, RectangularBinning):
-            #     if factor.bin_edges is None:
-            #         raise ValueError("Binned factors must have bin_edges defined.")
-            #     else:
-            #         for j, bin_edge in enumerate(self.binning.bin_edges):
-            #             print("Set binning", bin_edge)
-            #             print("Loaded Binning", factor.bin_edges[self.det_config][j])
-            #             np.testing.assert_array_almost_equal(
-            #                 bin_edge,
-            #                 factor.bin_edges[self.det_config][j],
-            #                 err_msg=f"Binned factor {factor.name} has different bin edges than the binning."
-            #             )
-            hist_add, hist_ssq_add = factor.evaluate(
-                input_variables,
-                parameter_values,
-            )
-            hist += hist_add * self.lifetime
-            if hist_ssq_add is not None:
-                hist_ssq += hist_ssq_add * self.lifetime**2
+                # if isinstance(self.binning, RectangularBinning):
+                #     if factor.bin_edges is None:
+                #         raise ValueError("Binned factors must have bin_edges defined.")
+                #     else:
+                #         for j, bin_edge in enumerate(self.binning.bin_edges):
+                #             print("Set binning", bin_edge)
+                #             print("Loaded Binning", factor.bin_edges[self.det_config][j])
+                #             np.testing.assert_array_almost_equal(
+                #                 bin_edge,
+                #                 factor.bin_edges[self.det_config][j],
+                #                 err_msg=f"Binned factor {factor.name} has different bin edges than the binning."
+                #             )
+                hist_add, hist_ssq_add = factor.evaluate(
+                    input_variables,
+                    parameter_values,
+                )
+                hist += hist_add * self.lifetime
+                if hist_ssq_add is not None:
+                    hist_ssq += hist_ssq_add * self.lifetime**2
 
         # Clamp values to avoid negative or infinite values
         hist = backend.clip(hist, 0, float("inf"))

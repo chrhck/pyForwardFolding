@@ -1,255 +1,181 @@
 from math import pi
-from typing import Any, Protocol, Tuple, TypeVar, cast
+from typing import Any, Protocol, Union
 
 import jax.nn
 import jax.numpy as jnp
 import jax.scipy.special
 from jax import Array as JAXArray
-from jax.typing import ArrayLike
+from jax.typing import ArrayLike as JArrayLike
 from typing_extensions import runtime_checkable
 
-
-@runtime_checkable
-class Array(Protocol):
-    @property
-    def shape(self) -> Tuple[int, ...]: ...
-
-    @property
-    def dtype(self) -> Any: ...
-
-    def __getitem__(self, key) -> "Array": ...
-    def __setitem__(self, key, value) -> None: ...
-    def __len__(self) -> int: ...
-    def __iter__(self) -> Any: ...
-    def __reversed__(self) -> "Array": ...
-    def __round__(self, ndigits=None) -> "Array": ...
-
-    # Comparisons
-
-    # these return bool for object, so ignore override errors.
-    def __lt__(self, other) -> "Array": ...
-    def __le__(self, other) -> "Array": ...
-    def __eq__(self, other) -> "Array": ...  # type: ignore[override]
-    def __ne__(self, other) -> "Array": ...  # type: ignore[override]
-    def __gt__(self, other) -> "Array": ...
-    def __ge__(self, other) -> "Array": ...
-
-    # Unary arithmetic
-
-    def __neg__(self) -> "Array": ...
-    def __pos__(self) -> "Array": ...
-    def __abs__(self) -> "Array": ...
-    def __invert__(self) -> "Array": ...
-
-    # Binary arithmetic
-
-    def __add__(self, other) -> "Array": ...
-    def __sub__(self, other) -> "Array": ...
-    def __mul__(self, other) -> "Array": ...
-    def __matmul__(self, other) -> "Array": ...
-    def __truediv__(self, other) -> "Array": ...
-    def __floordiv__(self, other) -> "Array": ...
-    def __mod__(self, other) -> "Array": ...
-    def __divmod__(self, other) -> tuple["Array", "Array"]: ...
-    def __pow__(self, other) -> "Array": ...
-    def __lshift__(self, other) -> "Array": ...
-    def __rshift__(self, other) -> "Array": ...
-    def __and__(self, other) -> "Array": ...
-    def __xor__(self, other) -> "Array": ...
-    def __or__(self, other) -> "Array": ...
-
-    def __radd__(self, other) -> "Array": ...
-    def __rsub__(self, other) -> "Array": ...
-    def __rmul__(self, other) -> "Array": ...
-    def __rmatmul__(self, other) -> "Array": ...
-    def __rtruediv__(self, other) -> "Array": ...
-    def __rfloordiv__(self, other) -> "Array": ...
-    def __rmod__(self, other) -> "Array": ...
-    def __rdivmod__(self, other) -> "Array": ...
-    def __rpow__(self, other) -> "Array": ...
-    def __rlshift__(self, other) -> "Array": ...
-    def __rrshift__(self, other) -> "Array": ...
-    def __rand__(self, other) -> "Array": ...
-    def __rxor__(self, other) -> "Array": ...
-    def __ror__(self, other) -> "Array": ...
-
-    def __bool__(self) -> bool: ...
-    def __complex__(self) -> complex: ...
-    def __int__(self) -> int: ...
-    def __float__(self) -> float: ...
-    def __index__(self) -> int: ...
-
-    def __buffer__(self, flags: int) -> memoryview: ...
-
-    def astype(self, dtype: Any) -> "Array": ...
-
-
-ArrayType = TypeVar("ArrayType", bound=Array)
+# Base types that backends should work with
+Array = JAXArray
+ArrayLike = Union[JAXArray, JArrayLike, Any]  # Allow any array-like input
 
 
 @runtime_checkable
-class Backend(Protocol[ArrayType]):
+class Backend(Protocol):
     """
     Protocol for backend interface for numerical operations.
     """
 
-    def array(self, data: Any, dtype: Any = None) -> ArrayType:
+    def array(self, data: Any, dtype: Any = None) -> Array:
         """Create an array from data."""
         ...
 
-    def asarray(self, data: Any, dtype: Any = None) -> ArrayType:
+    def asarray(self, data: Any, dtype: Any = None) -> Array:
         """Create an array from data without copying if possible."""
         ...
 
-    def zeros(self, shape: Any, dtype: Any = None) -> ArrayType:
+    def zeros(self, shape: Any, dtype: Any = None) -> Array:
         """Create an array of zeros."""
         ...
 
-    def power(self, a: Any, b: Any) -> ArrayType:
+    def power(self, a: Any, b: Any) -> Array:
         """Element-wise power operation."""
         ...
 
-    def exp(self, a: ArrayType) -> ArrayType:
+    def exp(self, a: Any) -> Array:
         """Element-wise exponential."""
         ...
 
-    def sqrt(self, a: ArrayType) -> ArrayType:
+    def sqrt(self, a: Any) -> Array:
         """Element-wise square root."""
         ...
 
-    def erf(self, a: ArrayType) -> ArrayType:
+    def erf(self, a: Any) -> Array:
         """Element-wise error function."""
         ...
 
-    def fasterf(self, x: ArrayType) -> ArrayType:
+    def fasterf(self, x: Any) -> Array:
         """Fast approximation of error function."""
         ...
 
-    def gauss_pdf(self, x: Any, mu: Any, sigma: Any) -> ArrayType:
+    def gauss_pdf(self, x: Any, mu: Any, sigma: Any) -> Array:
         """Gaussian probability density function."""
         ...
 
-    def gauss_cdf(self, x: Any, mu: Any, sigma: Any) -> ArrayType:
+    def gauss_cdf(self, x: Any, mu: Any, sigma: Any) -> Array:
         """Gaussian cumulative distribution function."""
         ...
 
-    def uniform_pdf(self, x: Any, lo: Any, hi: Any) -> ArrayType:
+    def uniform_pdf(self, x: Any, lo: Any, hi: Any) -> Array:
         """Uniform probability density function."""
         ...
 
-    def set_index(self, x: ArrayType, index: Any, values: Any) -> ArrayType:
+    def set_index(self, x: ArrayLike, index: Any, values: Any) -> Array:
         """Set values at specified indices."""
         ...
 
-    def fill(self, x: ArrayType, value: Any) -> ArrayType:
+    def fill(self, x: ArrayLike, value: Any) -> Array:
         """Fill array with a value."""
         ...
 
-    def histogram(self, x: ArrayType, bins: Any, weights: ArrayType) -> ArrayType:
+    def histogram(self, x: Any, bins: Any, weights: Any) -> Array:
         """Compute histogram."""
         ...
 
-    def bincount(self, x: ArrayType, weights: ArrayType, length: int) -> ArrayType:
+    def bincount(self, x: Array, weights: Array, length: int) -> Array:
         """Count occurrences of each value in array."""
         ...
 
-    def reshape(self, x: ArrayType, shape: Any) -> ArrayType:
+    def reshape(self, x: Array, shape: Any) -> Array:
         """Reshape array."""
         ...
 
-    def set_index_add(self, x: ArrayType, index: Any, values: Any) -> ArrayType:
+    def set_index_add(self, x: Array, index: Any, values: Any) -> Array:
         """Add values at specified indices."""
         ...
 
-    def searchsorted(self, a: ArrayType, v: ArrayType, side: str = "left") -> ArrayType:
+    def searchsorted(self, a: Array, v: Array, side: str = "left") -> Array:
         """Find indices where elements should be inserted to maintain order."""
         ...
 
-    def ravel_multi_index(self, multi_index: Any, dims: Any) -> ArrayType:
+    def ravel_multi_index(self, multi_index: Any, dims: Any) -> Array:
         """
         Converts a multi-dimensional index into a flat index.
         """
         ...
 
-    def clip(self, x: ArrayType, low: Any, high: Any) -> ArrayType:
+    def clip(self, x: Array, low: Any, high: Any) -> Array:
         """
         Clamps the values in x to be within the range [low, high].
         """
         ...
 
-    def linspace(self, start: float, stop: float, num: int) -> ArrayType:
+    def linspace(self, start: float, stop: float, num: int) -> Array:
         """
         Returns evenly spaced numbers over a specified interval.
         """
         ...
 
-    def where_sum(self, condition: ArrayType, x: ArrayType, y: ArrayType) -> ArrayType:
+    def where_sum(self, condition: Array, x: Array, y: ArrayLike) -> ArrayLike:
         """
         Returns the sum of an array with elements from x where condition is True, and from y otherwise.
         """
         ...
 
-    def log(self, x: Any) -> ArrayType:
+    def log(self, x: Any) -> Array:
         """
         Computes the natural logarithm of x.
         """
         ...
 
-    def diff(self, x: Any) -> ArrayType:
+    def diff(self, x: Any) -> Array:
         """
         Computes the discrete difference along the specified axis.
         """
         ...
 
-    def allclose(self, a: ArrayType, b: ArrayType, atol: float = 1e-8) -> ArrayType:
+    def allclose(self, a: Any, b: Any, atol: float = 1e-8) -> Array:
         """
         Checks if two arrays are element-wise equal within a tolerance.
         """
         ...
 
-    def sum(self, x: ArrayType, axis: Any = None) -> ArrayType:
+    def sum(self, x: Array, axis: Any = None) -> Array:
         """
         Computes the sum of array elements over a given axis.
         """
         ...
 
-    def tanh(self, x: ArrayType) -> ArrayType:
+    def tanh(self, x: Any) -> Any:
         """
         Computes the hyperbolic tangent of x.
         """
         ...
 
-    def digitize(self, x: ArrayType, bins: ArrayType) -> ArrayType:
+    def digitize(self, x: Array, bins: Array) -> Array:
         """
         Returns the indices of the bins to which each value in x belongs.
         """
         ...
 
-    def any(self, x: ArrayType) -> ArrayType:
+    def any(self, x: Array) -> Array:
         """
         Returns True if any element in x is True
         """
         ...
 
-    def where(self, cond: Any, x: Any, y: Any) -> ArrayType:
+    def where(self, cond: Any, x: Any, y: Any) -> Array:
         """
         Depending on cond return value from x or y
         """
         ...
 
-    def sigmoid(self, x: ArrayType) -> ArrayType:
+    def sigmoid(self, x: Array) -> Array:
         """
         Sigmoid function
         """
         ...
 
-    def select(self, condition: ArrayType, x: ArrayType, y: ArrayType) -> ArrayType:
+    def select(self, condition: Array, x: ArrayLike, y: ArrayLike) -> Array:
         """
         Select elements from x or y depending on condition.
         """
         ...
 
-    def gammaln(self, x: ArrayType) -> ArrayType:
+    def gammaln(self, x: Array) -> Array:
         """
         Natural logarithm of the gamma function.
         """
@@ -273,35 +199,31 @@ class Backend(Protocol[ArrayType]):
         """
         ...
 
-    def logspace(self, start: float, stop: float, num: int) -> ArrayType:
+    def logspace(self, start: float, stop: float, num: int) -> Array:
         """
         Return numbers spaced evenly on a log scale.
         """
         ...
 
-    def arccos(self, x: ArrayType) -> ArrayType:
+    def arccos(self, x: Array) -> Array:
         """
         Trigonometric inverse cosine, element-wise.
         """
         ...
 
-    def arg_weighted_quantile(
-        self, x: ArrayType, weights: ArrayType, quantile: float
-    ) -> ArrayType:
+    def arg_weighted_quantile(self, x: Array, weights: Array, quantile: float) -> Array:
         """
         Return the index of the weighted quantile.
         """
         ...
 
-    def weighted_quantile(
-        self, x: ArrayType, weights: ArrayType, quantile: float
-    ) -> ArrayType:
+    def weighted_quantile(self, x: Array, weights: Array, quantile: float) -> Array:
         """
         Return the weighted quantile.
         """
         ...
 
-    def weighted_median(self, x: ArrayType, weights: ArrayType) -> ArrayType:
+    def weighted_median(self, x: Array, weights: Array) -> Array:
         """
         Return the weighted median.
         """
@@ -327,16 +249,16 @@ class JAXBackend:
         return jnp.zeros(shape, dtype=dtype)
 
     def power(self, a: ArrayLike, b: Any) -> JAXArray:
-        return a**b
+        return jnp.power(jnp.asarray(a), b)
 
     def exp(self, a: ArrayLike) -> JAXArray:
-        return jnp.exp(a)
+        return jnp.exp(jnp.asarray(a))
 
     def sqrt(self, a: ArrayLike) -> JAXArray:
-        return jnp.sqrt(a)
+        return jnp.sqrt(jnp.asarray(a))
 
     def erf(self, a: ArrayLike) -> JAXArray:
-        return jax.scipy.special.erf(a)
+        return jax.scipy.special.erf(jnp.asarray(a))
 
     def fasterf(self, x: ArrayLike) -> JAXArray:
         # Approximation of erf function that handles negative values
@@ -359,18 +281,31 @@ class JAXBackend:
         # Apply sign correction for negative values
         return jnp.where(x >= 0, erf_pos, -erf_pos)
 
-    def gauss_pdf(self, x: ArrayLike, mu: Any, sigma: Any) -> JAXArray:
+    def gauss_pdf(self, x: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        mu = jnp.asarray(mu)
+        sigma = jnp.asarray(sigma)
         return (
             1.0 / (sigma * self.sqrt(2 * pi)) * self.exp(-0.5 * ((x - mu) / sigma) ** 2)
         )
 
-    def gauss_cdf(self, x: ArrayLike, mu: Any, sigma: Any) -> JAXArray:
+    def gauss_cdf(self, x: ArrayLike, mu: ArrayLike, sigma: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        mu = jnp.asarray(mu)
+        sigma = jnp.asarray(sigma)
         return 0.5 * (1.0 + self.fasterf((x - mu) / (sigma * self.sqrt(2.0))))
 
-    def uniform_pdf(self, x: ArrayLike, lo: Any, hi: Any) -> JAXArray:
+    def uniform_pdf(self, x: ArrayLike, lo: ArrayLike, hi: ArrayLike) -> JAXArray:
         # Uniform PDF is 1/(hi-lo) if lo <= x <= hi, 0 otherwise
+        x = jnp.asarray(x)
+        lo = jnp.asarray(lo)
+        hi = jnp.asarray(hi)
         pdf_value = 1.0 / (hi - lo)
-        return cast(JAXArray, jnp.where((x >= lo) & (x <= hi), pdf_value, 0.0))
+        result = jnp.where((x >= lo) & (x <= hi), pdf_value, 0.0)
+        # Ensure we return a JAXArray, not a tuple
+        if isinstance(result, tuple):
+            return result[0]
+        return result
 
     def set_index(self, x: ArrayLike, index: Any, values: Any) -> JAXArray:
         x = jnp.asarray(x)
@@ -385,10 +320,14 @@ class JAXBackend:
         return x.at[:].set(value)
 
     def histogram(self, x: ArrayLike, bins: Any, weights: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        weights = jnp.asarray(weights)
         hist, _ = jnp.histogram(x, bins=bins, weights=weights)
         return hist
 
     def bincount(self, x: ArrayLike, weights: ArrayLike, length: int) -> JAXArray:
+        x = jnp.asarray(x)
+        weights = jnp.asarray(weights)
         return jnp.bincount(x, weights=weights, length=length)
 
     def reshape(self, x: ArrayLike, shape: Any) -> JAXArray:
@@ -396,39 +335,57 @@ class JAXBackend:
         return x.reshape(shape)
 
     def searchsorted(self, a: ArrayLike, v: ArrayLike, side: str = "left") -> JAXArray:
+        a = jnp.asarray(a)
+        v = jnp.asarray(v)
         return jnp.searchsorted(a, v, side=side)
 
     def ravel_multi_index(self, multi_index: Any, dims: Any) -> JAXArray:
         return jnp.ravel_multi_index(multi_index, dims, mode="clip")
 
     def clip(self, x: ArrayLike, low: Any, high: Any) -> JAXArray:
+        x = jnp.asarray(x)
         return jnp.clip(x, low, high)
 
     def linspace(self, start: float, stop: float, num: int) -> JAXArray:
         return jnp.linspace(start, stop, num)
 
-    def where_sum(self, condition: ArrayLike, x: ArrayLike, y: ArrayLike) -> JAXArray:
-        return jnp.where(condition, x, y).sum()
+    def where_sum(self, condition: ArrayLike, x: ArrayLike, y: ArrayLike) -> JArrayLike:
+        condition = jnp.asarray(condition)
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
+        wsum = jnp.where(condition, x, y).sum()
+        return wsum
 
     def log(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
         return jnp.log(x)
 
     def diff(self, x: ArrayLike, axis: int = 0) -> JAXArray:
+        x = jnp.asarray(x)
         return jnp.diff(x, axis=axis)
 
     def allclose(self, a: ArrayLike, b: ArrayLike, atol: float = 1e-8) -> JAXArray:
+        a = jnp.asarray(a)
+        b = jnp.asarray(b)
         return jnp.allclose(a, b, atol=atol)
 
     def sum(self, x: ArrayLike, axis: Any = None) -> JAXArray:
+        x = jnp.asarray(x)
         return jnp.sum(x, axis=axis)
 
     def tanh(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
         return jnp.tanh(x)
 
     def select(self, condition: ArrayLike, x: ArrayLike, y: ArrayLike) -> JAXArray:
+        condition = jnp.asarray(condition)
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
         return jnp.where(condition, x, y)
 
     def gammaln(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
         return jax.scipy.special.gammaln(x)
 
     def func_and_grad(self, func: Any) -> Any:
@@ -444,9 +401,12 @@ class JAXBackend:
         return jnp.logspace(start, stop, num)
 
     def arccos(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
         return jnp.arccos(x)
 
     def digitize(self, x: ArrayLike, bins: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        bins = jnp.asarray(bins)
         return jnp.digitize(x, bins, right=False)
 
     def arg_weighted_quantile(
@@ -456,8 +416,8 @@ class JAXBackend:
             raise ValueError("quantile must have a value between 0 and 1")
 
         x = jnp.asarray(x)
-        sorted_indices = jnp.argsort(x)
         weights = jnp.asarray(weights)
+        sorted_indices = jnp.argsort(x)
         sorted_weightes = weights[sorted_indices]
         cumul_weights = jnp.cumsum(sorted_weightes) / jnp.sum(weights)
         quantile_idx = jnp.searchsorted(cumul_weights, quantile)
@@ -476,17 +436,22 @@ class JAXBackend:
         return self.weighted_quantile(x, weights, 0.5)
 
     def any(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
         return jnp.any(x)
 
     def where(self, cond: ArrayLike, x: ArrayLike, y: ArrayLike) -> JAXArray:
+        cond = jnp.asarray(cond)
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
         return jnp.where(cond, x, y)
 
     def sigmoid(self, x: ArrayLike) -> JAXArray:
-        return jax.nn.sigmoid(x)
+        x = jnp.asarray(x)
+        return jnp.asarray(jax.nn.sigmoid(x))
 
 
 # Type aliases for convenience
-JAXBackendType = Backend[JAXArray]
+JAXBackendType = Backend
 
 # Default backend instance
-backend: JAXBackendType = JAXBackend()
+backend: Backend = JAXBackend()

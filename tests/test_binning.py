@@ -60,19 +60,12 @@ class TestAbstractBinning:
         with pytest.raises(ValueError, match="Unknown binning type: UnknownBinning"):
             AbstractBinning.construct_from(config)
 
-    def test_hist_dims_property(self):
-        """Test hist_dims property calculation."""
-        binning = AbstractBinning()
-        # Mock bin_edges for testing
-        binning.bin_edges = ([1, 2, 3, 4], [5, 6, 7])  # 3 bins, 2 bins
-        expected_dims = (3, 2)
-        assert binning.hist_dims == expected_dims
 
     def test_nbins_property(self):
         """Test nbins property calculation."""
         binning = AbstractBinning()
-        # Mock bin_edges for testing
-        binning.bin_edges = ([1, 2, 3, 4], [5, 6, 7])  # 3 bins, 2 bins
+        # Mock _hist_dims for testing
+        binning._hist_dims = (3, 2)  # 3 bins, 2 bins
         expected_nbins = 3 * 2
         assert binning.nbins == expected_nbins
 
@@ -80,7 +73,7 @@ class TestAbstractBinning:
         """Test that build_histogram raises NotImplementedError."""
         binning = AbstractBinning()
         with pytest.raises(NotImplementedError):
-            binning.build_histogram(np.array([1, 2, 3]), (np.array([1, 2, 3]),))
+            binning.build_histogram("test_key", np.array([1, 2, 3]), (np.array([1, 2, 3]),))
 
 
 class TestRectangularBinning:
@@ -104,7 +97,7 @@ class TestRectangularBinning:
             ]
         }
         binning = RectangularBinning.construct_from(config)
-        assert binning.bin_variables == ["energy", "angle"]  # Returns list, not tuple
+        assert binning.bin_variables == ("energy", "angle")  # Returns tuple, not list
         assert len(binning.bin_edges) == 2
         assert len(binning.bin_edges[0]) == 5  # Linear spacing creates 5 points
         assert len(binning.bin_edges[1]) == 3  # Linear spacing creates 3 points

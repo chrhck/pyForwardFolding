@@ -79,7 +79,7 @@ class AbstractUnbinnedFactor(AbstractFactor):
         if factor_class is None:
             raise ValueError(f"Unknown factor type: {factor_type}")
 
-        return factor_class.construct_from(config)
+        return factor_class.construct_from(config)  # type: ignore[attr-defined]
 
 
 class AbstractBinnedFactor(AbstractFactor):
@@ -119,7 +119,7 @@ class AbstractBinnedFactor(AbstractFactor):
         if factor_class is None:
             raise ValueError(f"Unknown factor type: {factor_type}")
 
-        return factor_class.construct_from(config, binning)
+        return factor_class.construct_from(config, binning)  # type: ignore[attr-defined]
 
 
 def get_required_variable_values(
@@ -616,10 +616,10 @@ class SnowStormGradient(AbstractBinnedFactor):
         ndim_grads = [len(be) - 1 for be in self.gradients["binning"]]
 
         for gname in self.gradient_names:
-            grad = self.gradients[gname]
-            if grad.shape != ndim_grads:
+            grad = self.gradients[gname]["gradient"]
+            if grad.shape != tuple(ndim_grads):
                 raise ValueError(
-                    f"Gradient '{gname}' has shape {grad.shape}, expected {ndim_grads}"
+                   f"Gradient '{gname}' has shape {grad.shape}, expected {ndim_grads}"
                 )
 
         if list(self.binning.hist_dims) != ndim_grads:

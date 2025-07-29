@@ -610,6 +610,10 @@ class TestSnowStormGradient:
                 np.linspace(0, 1, 16),
             ],  # Different dimensions (10, 15)
             "livetime": 1000.0,
+            "grad1": {
+                "gradient": np.random.random((10, 15)),
+                "gradient_error": np.random.random((10, 15)),
+            },
         }
 
         with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=".pkl") as f:
