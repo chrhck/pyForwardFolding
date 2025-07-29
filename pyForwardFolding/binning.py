@@ -152,7 +152,7 @@ class RectangularBinning(AbstractBinning):
 
     def __init__(
         self,
-        bin_variables: Tuple[str],
+        bin_variables: Tuple[str, ...],
         bin_edges: Tuple[Array, ...],
         bin_indices_dict: Optional[Dict[str, List[Tuple[int]]]] = None,
         mask_dict: Optional[Dict[str, Any]] = None,
@@ -268,7 +268,7 @@ class RectangularBinning2DTo3D(RectangularBinning):
 
     def __init__(
         self,
-        bin_variables: Tuple[str],
+        bin_variables: Tuple[str, ...],
         bin_edges: Tuple[Array, ...],
         bin_edges_3d: Array,
         bin_indices_dict: Optional[Dict[str, List[Tuple[int]]]] = None,
@@ -277,7 +277,7 @@ class RectangularBinning2DTo3D(RectangularBinning):
         super().__init__(bin_variables, bin_edges, bin_indices_dict, mask_dict)
         if len(self.hist_dims) != 2:
             raise ValueError("RectangularBinning2DTo3D requires exactly two dimensions")
-        
+
         self.bin_edges_3d = bin_edges_3d
 
     def build_histogram(
@@ -299,8 +299,15 @@ class RectangularBinning2DTo3D(RectangularBinning):
         """
         histogram_2d = super().build_histogram(ds_key, weights, binning_variables)
 
-        histogram_2d /= self.bin_edges_3d.shape[0]  # Normalize by the number of bins in the third dimension
+        histogram_2d /= (
+            self.bin_edges_3d.shape[0] - 1
+        )  # Normalize by the number of bins in the third dimension
 
+        histogram_3d = backend.repeat(
+            histogram_2d[..., None],
+            repeats=self.bin_edges_3d.shape[0] - 1,
+            axis=-1,
+            total_repeat_length=self.bin_edges_3d.shape[0] - 1,
+        )
 
-
-        return histogram_2d[..., None]
+        return histogram_3d

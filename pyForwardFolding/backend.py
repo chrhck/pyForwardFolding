@@ -229,6 +229,12 @@ class Backend(Protocol):
         """
         ...
 
+    def repeat(self, x: Array, repeats, axis=None, total_repeat_length=None) -> Array:
+        """
+        Repeat elements of an array.
+        """
+        ...
+
 
 class JAXBackend:
     """
@@ -449,6 +455,13 @@ class JAXBackend:
         x = jnp.asarray(x)
         return jnp.asarray(jax.nn.sigmoid(x))
 
+
+    def repeat(self, x: ArrayLike, repeats, axis=None, total_repeat_length=None) -> JAXArray:
+        """
+        Repeat elements of an array.
+        """
+        x = jnp.asarray(x)
+        return jnp.repeat(x, repeats, axis=axis, total_repeat_length=total_repeat_length)
 
 # Type aliases for convenience
 JAXBackendType = Backend

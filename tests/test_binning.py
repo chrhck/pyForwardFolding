@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 
 from pyForwardFolding.backend import backend
-from pyForwardFolding.binning import AbstractBinning, RectangularBinning
+from pyForwardFolding.binning import (
+    AbstractBinning,
+    RectangularBinning,
+    RectangularBinning2DTo3D,
+)
 
 
 class TestAbstractBinning:
@@ -60,7 +64,6 @@ class TestAbstractBinning:
         with pytest.raises(ValueError, match="Unknown binning type: UnknownBinning"):
             AbstractBinning.construct_from(config)
 
-
     def test_nbins_property(self):
         """Test nbins property calculation."""
         binning = AbstractBinning()
@@ -73,7 +76,9 @@ class TestAbstractBinning:
         """Test that build_histogram raises NotImplementedError."""
         binning = AbstractBinning()
         with pytest.raises(NotImplementedError):
-            binning.build_histogram("test_key", np.array([1, 2, 3]), (np.array([1, 2, 3]),))
+            binning.build_histogram(
+                "test_key", np.array([1, 2, 3]), (np.array([1, 2, 3]),)
+            )
 
 
 class TestRectangularBinning:
@@ -356,6 +361,46 @@ class TestBinningIntegration:
 
         np.testing.assert_array_equal(hist_1, expected_1)
         np.testing.assert_array_equal(hist_2, expected_2)
+
+
+class Test2DTo3DBinning:
+    """Test RectangularBinning2DTo3D implementation."""
+
+    def test_init(self):
+        """Test initialization of RectangularBinning2DTo3D."""
+        bin_variables = ("energy", "angle")
+        bin_edges = (backend.array([1.0, 2.0, 3.0]), backend.array([0.0, 0.5, 1.0]))
+        bin_edges_3d = backend.array([0.0, 0.5, 1.0, 1.5])  # 3 bins in 2rd dim
+
+        binning = RectangularBinning2DTo3D(bin_variables, bin_edges, bin_edges_3d)
+        assert binning.bin_variables == bin_variables
+        assert len(binning.bin_edges) == 2
+
+    def test_build_histogram(self):
+        """Test build_histogram for RectangularBinning2DTo3D."""
+        bin_variables = ("energy", "angle")
+        bin_edges = (backend.array([1.0, 2.0, 3.0]), backend.array([0.0, 0.5, 1.0]))
+        bin_edges_3d = backend.array([0.0, 0.5, 1.0, 1.5])  # 3 bins in 2rd dim
+
+        n_bins_3d = bin_edges_3d.shape[0] - 1  # Number of bins in the third dimension
+
+        binning = RectangularBinning2DTo3D(bin_variables, bin_edges, bin_edges_3d)
+
+        # Test data: 4 events in different bins
+        energy_data = backend.array([1.5, 1.5, 2.5, 2.5])
+        angle_data = backend.array([0.25, 0.75, 0.25, 0.75])
+        binning_variables = (energy_data, angle_data)
+        weights = backend.array([1.0, 2.0, 3.0, 4.0])
+
+        histogram = binning.build_histogram("test_dataset", weights, binning_variables)
+
+        # Expected: same as in RectangularBinning but normalized by n_bins_3d
+        expected = np.array([[1.0, 2.0], [3.0, 4.0]])
+        expected_3d = (
+            np.repeat(expected[..., None], repeats=n_bins_3d, axis=-1) / n_bins_3d
+        )
+
+        np.testing.assert_array_almost_equal(histogram, expected_3d)
 
 
 if __name__ == "__main__":
