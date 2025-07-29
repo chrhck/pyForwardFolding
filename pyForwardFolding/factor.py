@@ -616,10 +616,10 @@ class SnowStormGradient(AbstractBinnedFactor):
         ndim_grads = [len(be) - 1 for be in self.gradients["binning"]]
 
         for gname in self.gradient_names:
-            grad = self.gradients[gname]
-            if grad.shape != ndim_grads:
+            grad = self.gradients[gname]["gradient"]
+            if grad.shape != tuple(ndim_grads):
                 raise ValueError(
-                    f"Gradient '{gname}' has shape {grad.shape}, expected {ndim_grads}"
+                   f"Gradient '{gname}' has shape {grad.shape}, expected {ndim_grads}"
                 )
 
         if list(self.binning.hist_dims) != ndim_grads:
