@@ -147,6 +147,7 @@ class RectangularBinning(AbstractBinning):
         bin_variables (Tuple[str]): The variables used for binning.
         bin_edges (List[Array]): The edges of the bins for each variable.
         bin_indices (List[Tuple[int]]): Precomputed bin indices.
+        mask_dict (Dict[str, Any], optional): Masks for the binning variables.
     """
 
     def __init__(
@@ -251,3 +252,55 @@ class RectangularBinning(AbstractBinning):
         )
 
         return output.reshape(self.hist_dims)
+
+
+class RectangularBinning2DTo3D(RectangularBinning):
+    """
+    Rectangular binning strategy for converting 2D data to 3D histograms.
+
+    Args:
+        bin_variables (Tuple[str]): The variables used for the 2D histogram.
+        bin_edges (List[Array]): The edges of the bins for each variable.
+        bin_edges_3d (int): Bin edges for the third dimension.
+        bin_indices_dict (Optional[Dict[str, List[Tuple[int]]]]): Precomputed bin indices for the 2D histogram
+        mask_dict (Dict[str, Any], optional): Masks for the binning variables.
+    """
+
+    def __init__(
+        self,
+        bin_variables: Tuple[str],
+        bin_edges: Tuple[Array, ...],
+        bin_edges_3d: Array,
+        bin_indices_dict: Optional[Dict[str, List[Tuple[int]]]] = None,
+        mask_dict: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(bin_variables, bin_edges, bin_indices_dict, mask_dict)
+        if len(self.hist_dims) != 2:
+            raise ValueError("RectangularBinning2DTo3D requires exactly two dimensions")
+        
+        self.bin_edges_3d = bin_edges_3d
+
+    def build_histogram(
+        self,
+        ds_key: str,
+        weights: Array,
+        binning_variables: Tuple[Array, ...],
+    ) -> Array:
+        """
+        Build a 3D histogram from 2D data by adding a third dimension of size 1.
+
+        Args:
+            ds_key (str): The dataset key.
+            weights (Array): Weights for the histogram.
+            binning_variables (Tuple[Array, ...]): The variables used for binning.
+
+        Returns:
+            Array: A 3D histogram with the third dimension of size 1.
+        """
+        histogram_2d = super().build_histogram(ds_key, weights, binning_variables)
+
+        histogram_2d /= self.bin_edges_3d.shape[0]  # Normalize by the number of bins in the third dimension
+
+
+
+        return histogram_2d[..., None]
