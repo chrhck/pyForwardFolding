@@ -112,7 +112,7 @@ class GaussianUnivariatePrior(AbstractPrior):
     def log_pdf(self, parameter_values):
         llh = 0
         for par, (mean, std) in self.prior_params.items():
-            llh += (parameter_values[par] - mean) ** 2 / std**2
+            llh += -(parameter_values[par] - mean) ** 2 / (2*std**2)
         return llh
 
 

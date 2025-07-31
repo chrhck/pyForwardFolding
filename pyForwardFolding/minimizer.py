@@ -119,10 +119,10 @@ class WrappedLLH:
         """
         exp_vars = self.likelihood.get_analysis().exposed_parameters
         restructured_args = restructure_args(flat_params, exp_vars, self.fixed_params)
-        binned_llh = -self.likelihood.llh(self.obs, self.datasets, restructured_args)
+        binned_llh = self.likelihood.llh(self.obs, self.datasets, restructured_args)
         for p in self.prior:
             binned_llh += p.log_pdf(restructured_args)
-        return binned_llh
+        return -binned_llh
 
 
 class AbstractMinimizer:
