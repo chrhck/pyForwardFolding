@@ -81,3 +81,89 @@ class ModelComponent:
             output *= factor.evaluate(input_variables, parameter_values)
 
         return output  # type: ignore
+
+    def __repr__(self):
+        """
+        String representation of the ModelComponent object.
+
+        Returns:
+            str: A string representation of the model component.
+        """
+        lines = []
+        lines.append(f"ModelComponent: {self.name}")
+        lines.append(f"  Factors ({len(self.factors)}):")
+        for factor in self.factors:
+            # Use the factor's __repr__ method and indent it
+            factor_repr = str(factor).replace('\n', '\n    ')
+            lines.append(f"    {factor_repr}")
+        lines.append(f"  Required variables: {sorted(self.required_variables)}")
+        lines.append(f"  Exposed parameters: {sorted(self.exposed_parameters)}")
+        return "\n".join(lines)
+
+    def _repr_markdown_(self):
+        """
+        Markdown representation of the ModelComponent object.
+
+        Returns:
+            str: A markdown-formatted string representation of the model component.
+        """
+        return self.repr_markdown()
+
+    def repr_markdown(
+        self,
+        indent_level: int = 0,
+        bullet_style: str = "-",
+        include_summary: bool = True,
+    ) -> str:
+        """
+        Configurable markdown representation of the ModelComponent object.
+
+        Args:
+            indent_level (int): The level of indentation (each level adds 2 spaces). Default is 0.
+            bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
+            include_summary (bool): Whether to include required variables and exposed parameters summary. Default is True.
+
+        Returns:
+            str: A configurable markdown representation of the model component.
+        """
+        indent = "  " * indent_level
+        sub_indent = "  " * (indent_level + 1)
+        
+        lines = []
+        
+        # Header with appropriate level based on indent
+        if indent_level == 0:
+            lines.append(f"#### ModelComponent: {self.name}")
+        else:
+            lines.append(f"{indent}{bullet_style} **ModelComponent:** {self.name}")
+        
+        # Factors section
+        if indent_level == 0:
+            lines.append(f"**Factors ({len(self.factors)}):**")
+        else:
+            lines.append(f"{sub_indent}{bullet_style} Factors ({len(self.factors)}):")
+        
+        for factor in self.factors:
+            if hasattr(factor, 'repr_markdown'):
+                # Use the configurable rendering with proper indentation level
+                factor_md = factor.repr_markdown(
+                    indent_level=indent_level + 1 if indent_level == 0 else indent_level + 2,
+                    bullet_style=bullet_style,
+                    include_type_in_name=True,
+                )
+                lines.append(factor_md)
+            else:
+                factor_indent = "" if indent_level == 0 else sub_indent
+                lines.append(f"{factor_indent}{bullet_style} **{type(factor).__name__}** (`{factor.name}`) - No markdown representation available")
+        
+        if include_summary:
+            lines.append("")
+            if indent_level == 0:
+                lines.append(f"**Required variables:** `{sorted(self.required_variables)}`")
+                lines.append("")
+                lines.append(f"**Exposed parameters:** `{sorted(self.exposed_parameters)}`")
+            else:
+                lines.append(f"{sub_indent}{bullet_style} Required variables: `{sorted(self.required_variables)}`")
+                lines.append(f"{sub_indent}{bullet_style} Exposed parameters: `{sorted(self.exposed_parameters)}`")
+
+        return "\n".join(lines)

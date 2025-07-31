@@ -165,3 +165,97 @@ class Model:
             output[component.name] = comp_eval
 
         return output
+
+    def __repr__(self):
+        """
+        String representation of the Model object.
+
+        Returns:
+            str: A string representation of the model.
+        """
+        lines = []
+        lines.append(f"Model: {self.name}")
+        lines.append(f"  Components ({len(self.components)}):")
+        for comp, weight in zip(self.components, self.baseline_weights):
+            lines.append(f"    • {comp.name} (weight: {weight})")
+            # Indent the component representation
+            comp_repr = str(comp).replace('\n', '\n      ')
+            lines.append(f"      {comp_repr}")
+        lines.append(f"  Required variables: {sorted(self.required_variables)}")
+        lines.append(f"  Exposed parameters: {sorted(self.exposed_parameters)}")
+        return "\n".join(lines)
+
+    def _repr_markdown_(self):
+        """
+        Markdown representation of the Model object.
+
+        Returns:
+            str: A markdown-formatted string representation of the model.
+        """
+        return self.repr_markdown()
+
+    def repr_markdown(
+        self,
+        indent_level: int = 0,
+        bullet_style: str = "-",
+        include_summary: bool = True,
+        show_component_details: bool = True,
+    ) -> str:
+        """
+        Configurable markdown representation of the Model object.
+
+        Args:
+            indent_level (int): The level of indentation (each level adds 2 spaces). Default is 0.
+            bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
+            include_summary (bool): Whether to include required variables and exposed parameters summary. Default is True.
+            show_component_details (bool): Whether to show detailed component markdown. Default is True.
+
+        Returns:
+            str: A configurable markdown representation of the model.
+        """
+        indent = "  " * indent_level
+        sub_indent = "  " * (indent_level + 1)
+        
+        lines = []
+        
+        # Header with appropriate level based on indent
+        if indent_level == 0:
+            lines.append(f"### Model: {self.name}")
+        else:
+            lines.append(f"{indent}{bullet_style} **Model:** {self.name}")
+        
+        if include_summary:
+            lines.append("")
+            if indent_level == 0:
+                lines.append(f"**Required variables:** `{sorted(self.required_variables)}`\n")
+                lines.append(f"**Exposed parameters:** `{sorted(self.exposed_parameters)}`")
+            else:
+                lines.append(f"{sub_indent}{bullet_style} Required variables: `{sorted(self.required_variables)}`")
+                lines.append(f"{sub_indent}{bullet_style} Exposed parameters: `{sorted(self.exposed_parameters)}`")
+
+
+
+        # Components section
+        if indent_level == 0:
+            lines.append(f"**Components ({len(self.components)}):**")
+        else:
+            lines.append(f"{sub_indent}{bullet_style} Components ({len(self.components)}):")
+        
+        for comp, weight in zip(self.components, self.baseline_weights):
+            comp_indent = "" if indent_level == 0 else sub_indent
+            lines.append(f"{comp_indent}{bullet_style} **{comp.name}** (weight: {weight})")
+            
+            if show_component_details and hasattr(comp, 'repr_markdown'):
+                # Use the configurable rendering with proper indentation level
+                comp_md = comp.repr_markdown(
+                    indent_level=indent_level + 1 if indent_level == 0 else indent_level + 2,
+                    bullet_style=bullet_style,
+                    include_summary=include_summary,
+                )
+                lines.append(comp_md)
+            elif show_component_details:
+                fallback_indent = sub_indent if indent_level == 0 else "  " * (indent_level + 2)
+                lines.append(f"{fallback_indent}(No markdown representation available for {comp.name})")
+        
+       
+        return "\n".join(lines)

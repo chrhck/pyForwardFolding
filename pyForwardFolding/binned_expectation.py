@@ -147,3 +147,129 @@ class BinnedExpectation:
         hist_ssq = backend.clip(hist_ssq, 0, float("inf"))
 
         return hist, hist_ssq
+
+    def _repr_markdown_(self) -> str:
+        """
+        Markdown representation of the BinnedExpectation object.
+
+        Returns:
+            str: A markdown representation of the binned expectation.
+        """
+        return self.repr_markdown()
+
+    def repr_markdown(
+        self,
+        indent_level: int = 0,
+        bullet_style: str = "-",
+        include_summary: bool = True,
+        show_model_details: bool = True,
+        show_binning_details: bool = True,
+    ) -> str:
+        """
+        Configurable markdown representation of the BinnedExpectation object.
+
+        Args:
+            indent_level (int): The level of indentation (each level adds 2 spaces). Default is 0.
+            bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
+            include_summary (bool): Whether to include summary information. Default is True.
+            show_model_details (bool): Whether to show detailed model information. Default is True.
+            show_binning_details (bool): Whether to show detailed binning information. Default is True.
+
+        Returns:
+            str: A configurable markdown representation of the binned expectation.
+        """
+        indent = "  " * indent_level
+        sub_indent = "  " * (indent_level + 1)
+        
+        lines = []
+        
+        # Header with appropriate level based on indent
+        if indent_level == 0:
+            lines.append(f"## Expectation: `{self.name}`")
+        else:
+            lines.append(f"{indent}{bullet_style} **Expectation:** `{self.name}`")
+        
+        # Dataset keys
+        dataset_keys = [dskey for dskey, _ in self.dskey_model_pairs]
+        if indent_level == 0:
+            lines.append(f"**Datasets:** `{dataset_keys}`")
+        else:
+            lines.append(f"{sub_indent}{bullet_style} Datasets: `{dataset_keys}`")
+        
+        lines.append("")
+        
+        # Models section
+        if indent_level == 0:
+            lines.append(f"**Models ({len(self.models)}):**")
+        else:
+            lines.append(f"{sub_indent}{bullet_style} Models ({len(self.models)}):")
+        
+        if show_model_details:
+            # Create a mapping from model to datasets
+            model_to_datasets = {}
+            for dskey, model in self.dskey_model_pairs:
+                if model.name not in model_to_datasets:
+                    model_to_datasets[model.name] = []
+                model_to_datasets[model.name].append(dskey)
+            
+            for i, model in enumerate(self.models, 1):
+                datasets_used = model_to_datasets.get(model.name, [])
+                datasets_str = ', '.join(f"`{ds}`" for ds in datasets_used)
+                
+                model_indent = "" if indent_level == 0 else sub_indent
+                lines.append(f"{model_indent}{i}. **{model.name}** ({len(model.components)} components) - Uses datasets: {datasets_str}")
+                
+                
+                # Use compact model representation
+                model_md = model.repr_markdown(
+                    indent_level=indent_level + 1 if indent_level == 0 else indent_level + 2,
+                    bullet_style=bullet_style,
+                    include_summary=False,  # Skip model summary to avoid redundancy
+                    show_component_details=False,  # Keep it compact
+                )
+                lines.append(model_md)           
+        else:
+            # Just list model names
+            for model in self.models:
+                model_indent = sub_indent if indent_level == 0 else "  " * (indent_level + 2)
+                lines.append(f"{model_indent}{bullet_style} {model.name}")
+        
+        lines.append("")
+        
+        # Binning information
+        if show_binning_details:
+            if indent_level == 0:
+                lines.append("**Binning:**")
+            else:
+                lines.append(f"{sub_indent}{bullet_style} Binning:")
+            
+            binning_indent = sub_indent if indent_level == 0 else "  " * (indent_level + 2)
+            lines.append(f"{binning_indent}{bullet_style} Type: `{type(self.binning).__name__}`")
+            lines.append(f"{binning_indent}{bullet_style} Variables: `{self.binning.required_variables}`")
+            lines.append(f"{binning_indent}{bullet_style} Dimensions: `{self.binning.hist_dims}` ({self.binning.nbins} bins)")
+            lines.append("")
+        
+        # Binned factors if any
+        if self.binned_factors:
+            factor_names = [f.name for f in self.binned_factors]
+            if indent_level == 0:
+                lines.append(f"**Binned Factors:** {', '.join(factor_names)}")
+            else:
+                lines.append(f"{sub_indent}{bullet_style} Binned Factors: {', '.join(factor_names)}")
+            lines.append("")
+        
+        # Summary information
+        if include_summary:
+            if indent_level == 0:
+                lines.append("**Configuration Summary:**")
+                lines.append("| Aspect | Count/Details |")
+                lines.append("|--------|---------------|")
+                lines.append(f"| Required variables | {len(self.required_variables)} |")
+                lines.append(f"| Exposed parameters | {len(self.exposed_parameters)} |")
+                lines.append(f"| Lifetime | `{self.lifetime}` |")
+            else:
+                lines.append(f"{sub_indent}{bullet_style} Required variables: {len(self.required_variables)}")
+                lines.append(f"{sub_indent}{bullet_style} Exposed parameters: {len(self.exposed_parameters)}")
+                lines.append(f"{sub_indent}{bullet_style} Lifetime: `{self.lifetime}`")
+
+        return "\n".join(lines)

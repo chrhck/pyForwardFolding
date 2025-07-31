@@ -64,6 +64,36 @@ class AbstractBinning:
     ) -> Array:
         raise NotImplementedError
 
+    def __repr__(self):
+        """
+        String representation of the AbstractBinning object.
+
+        Returns:
+            str: A string representation of the binning.
+        """
+        binning_type = type(self).__name__
+        lines = []
+        lines.append(f"{binning_type}")
+        if hasattr(self, 'required_variables') and self.required_variables:
+            lines.append(f"  Variables: {self.required_variables}")
+        lines.append(f"  Histogram dimensions: {self.hist_dims}")
+        lines.append(f"  Number of bins: {self.nbins}")
+        return "\n".join(lines)
+
+    def _repr_markdown_(self):
+        """
+        Markdown representation of the AbstractBinning object.
+
+        Returns:
+            str: A markdown-formatted string representation of the binning.
+        """
+        lines = []
+        lines.append(f"### Binning: {type(self).__name__}")
+        lines.append(f"**Variables:** `{self.required_variables}`")
+        lines.append(f"**Histogram dimensions:** `{self.hist_dims}`")
+        lines.append(f"**Number of bins:** `{self.nbins}`")
+        return "\n".join(lines)
+
 
 class RelaxedBinning(AbstractBinning):
     """
@@ -265,6 +295,8 @@ class RectangularBinning2DTo3D(RectangularBinning):
         bin_indices_dict (Optional[Dict[str, List[Tuple[int]]]]): Precomputed bin indices for the 2D histogram
         mask_dict (Dict[str, Any], optional): Masks for the binning variables.
     """
+
+    # TODO: fix dimension / binning. this is currently just the binning for the 2D histogram
 
     def __init__(
         self,

@@ -38,6 +38,65 @@ class AbstractFactor:
     ) -> Any:
         raise NotImplementedError
 
+    def __repr__(self):
+        """
+        String representation of the AbstractFactor object.
+
+        Returns:
+            str: A string representation of the factor.
+        """
+        factor_type = type(self).__name__
+        lines = []
+        lines.append(f"{factor_type}: {self.name}")
+        if self.factor_parameters:
+            lines.append(f"  Parameters: {self.parameter_mapping}")
+        return "\n".join(lines)
+
+    def _repr_markdown_(self) -> str:
+        """
+        Markdown representation of the AbstractFactor object.
+
+        Returns:
+            str: A markdown representation of the factor.
+        """
+        return self.repr_markdown()
+
+    def repr_markdown(
+        self,
+        indent_level: int = 0,
+        bullet_style: str = "-",
+        include_type_in_name: bool = True,
+    ) -> str:
+        """
+        Configurable markdown representation of the AbstractFactor object as a list.
+
+        Args:
+            indent (str): String to prepend to each line for indentation. Default is empty.
+            bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
+            include_type_in_name (bool): Whether to include factor type in the name. Default is True.
+            sub_indent (str): Additional indentation for nested items. Default is "  ".
+
+        Returns:
+            str: A configurable markdown representation of the factor as a list.
+        """
+        factor_type = type(self).__name__
+
+        indent = "  " * indent_level
+        sub_indent = "  " * (indent_level + 1)
+        sub_sub_indent = "  " * (indent_level + 2)
+
+        lines = []
+        if include_type_in_name:
+            lines.append(f"{indent}{bullet_style} **{factor_type}** (`{self.name}`)")
+        else:
+            lines.append(f"{indent}{bullet_style} `{self.name}`")
+            
+        if self.factor_parameters:
+            lines.append(f"{sub_indent}{bullet_style} Parameters:")
+            for factor_param, exposed_param in self.parameter_mapping.items():
+                lines.append(f"{sub_sub_indent}{bullet_style} `{factor_param}` → `{exposed_param}`")
+        return "\n".join(lines)
+
 
 class AbstractUnbinnedFactor(AbstractFactor):
     """
@@ -56,6 +115,12 @@ class AbstractUnbinnedFactor(AbstractFactor):
 
     @property
     def required_variables(self) -> List[str]:
+        """
+        Get the required variables for the unbinned factor.
+
+        Returns:
+            List[str]: A list of required variables.
+        """
         return self.req_vars
 
     def evaluate(
@@ -80,6 +145,57 @@ class AbstractUnbinnedFactor(AbstractFactor):
             raise ValueError(f"Unknown factor type: {factor_type}")
 
         return factor_class.construct_from(config)  # type: ignore[attr-defined]
+
+    def __repr__(self):
+        """
+        String representation of the AbstractUnbinnedFactor object.
+
+        Returns:
+            str: A string representation of the unbinned factor.
+        """
+        
+        lines = super().__repr__().splitlines()  
+        if self.required_variables:
+            lines.append(f"  Required variables: {self.required_variables}") # type: ignore
+        return "\n".join(lines)
+
+    def _repr_markdown_(self) -> str:
+        """
+        Markdown representation of the AbstractUnbinnedFactor object.
+
+        Returns:
+            str: A markdown representation of the unbinned factor.
+        """
+        return self.repr_markdown()
+
+    def repr_markdown(
+        self,
+        indent_level: int = 0,
+        bullet_style: str = "-",
+        include_type_in_name: bool = True,
+    ) -> str:
+        """
+        Configurable markdown representation of the AbstractUnbinnedFactor object as a list.
+
+        Args:
+            indent (str): String to prepend to each line for indentation. Default is empty.
+            bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
+            include_type_in_name (bool): Whether to include factor type in the name. Default is True.
+            sub_indent (str): Additional indentation for nested items. Default is "  ".
+
+        Returns:
+            str: A configurable markdown representation of the unbinned factor as a list.
+        """
+
+        sub_indent = "  " * (indent_level + 1)
+        sub_sub_indent = "  " * (indent_level + 2)
+
+        lines = [AbstractFactor.repr_markdown(self, indent_level, bullet_style, include_type_in_name)]
+        if self.required_variables:
+            lines.append(f"{sub_indent}{bullet_style} Required variables:")
+            for var in self.required_variables:
+                lines.append(f"{sub_sub_indent}{bullet_style} `{var}`")
+        return "\n".join(lines)
 
 
 class AbstractBinnedFactor(AbstractFactor):
@@ -120,6 +236,33 @@ class AbstractBinnedFactor(AbstractFactor):
             raise ValueError(f"Unknown factor type: {factor_type}")
 
         return factor_class.construct_from(config, binning)  # type: ignore[attr-defined]
+
+    def repr_markdown(
+        self,
+        indent_level: int = 0,
+        bullet_style: str = "-",
+        include_type_in_name: bool = True,
+    ) -> str:
+        """
+        Configurable markdown representation of the AbstractBinnedFactor object as a list.
+
+        Args:
+            indent (str): String to prepend to each line for indentation. Default is empty.
+            bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
+            include_type_in_name (bool): Whether to include factor type in the name. Default is True.
+            sub_indent (str): Additional indentation for nested items. Default is "  ".
+
+        Returns:
+            str: A configurable markdown representation of the binned factor as a list.
+        """
+
+        indent = "  " * indent_level
+        sub_indent = "  " * (indent_level + 1)
+
+        lines = [AbstractFactor.repr_markdown(self, indent_level, bullet_style, include_type_in_name)]
+        lines.append(f"{indent}{bullet_style} Binning: {type(self.binning).__name__}")
+        lines.append(f"{sub_indent}{bullet_style} Dimensions: `{self.binning.hist_dims}`")
+        return "\n".join(lines)
 
 
 def get_required_variable_values(
