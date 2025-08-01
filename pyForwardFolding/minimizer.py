@@ -31,7 +31,7 @@ def flat_index_dict_mapping(
 
 
 def restructure_args(
-    flat_args, exp_vars: Set[str], fixed_params: Optional[Dict[str, Any]] = None
+    flat_args, exp_vars: List[str], fixed_params: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Restructure flat arguments into the original parameter structure.
@@ -60,7 +60,7 @@ T = TypeVar("T")
 
 def destructure_args(
     params: Dict[str, T],
-    exp_vars: Set[str],
+    exp_vars: List[str],
     fixed_params: Optional[Dict[str, Any]] = None,
 ) -> List[T]:
     """
@@ -106,6 +106,7 @@ class WrappedLLH:
         self.datasets = datasets
         self.fixed_params = fixed_params
         self.prior = prior
+        self.parameters = sorted(list(self.likelihood.get_analysis().exposed_parameters))
 
     def __call__(self, flat_params) -> Array:
         """
@@ -117,8 +118,7 @@ class WrappedLLH:
         Returns:
             float: The negative likelihood value.
         """
-        exp_vars = self.likelihood.get_analysis().exposed_parameters
-        restructured_args = restructure_args(flat_params, exp_vars, self.fixed_params)
+        restructured_args = restructure_args(flat_params, self.parameters, self.fixed_params)
         binned_llh = self.likelihood.llh(self.obs, self.datasets, restructured_args)
         for p in self.prior:
             binned_llh += p.log_pdf(restructured_args)
@@ -133,7 +133,6 @@ class AbstractMinimizer:
         llh (AbstractLikelihood): The likelihood function to minimize.
         obs (Dict): Observed data.
         dataset (Dict): Input datasets.
-        exposed_vars: Variables to be optimized.
         bounds: Bounds for the optimization parameters.
         seeds: Initial guesses for the optimization parameters.
         priors (Dict): Prior distributions for the parameters.
@@ -156,13 +155,12 @@ class AbstractMinimizer:
         self.priors: List[AbstractPrior] = []
         self.priors.append(GaussianUnivariatePrior(priors))
         self.fixed_pars = fixed_pars
+        self.parameters = sorted(list(self.llh.get_analysis().exposed_parameters))
 
-        exposed_vars = self.llh.get_analysis().exposed_parameters
-
-        bounds_list = destructure_args(bounds, exposed_vars, fixed_pars)
+        bounds_list = destructure_args(bounds, self.parameters, fixed_pars)
         bounds_lower = [bound[0] for bound in bounds_list]
         bounds_upper = [bound[1] for bound in bounds_list]
-        seeds_list = destructure_args(seeds, exposed_vars, fixed_pars)
+        seeds_list = destructure_args(seeds, self.parameters, fixed_pars)
 
         self.bounds = Bounds(bounds_lower, bounds_upper)  # type: ignore
         self.seeds = seeds_list
@@ -202,6 +200,7 @@ class ScipyMinimizer(AbstractMinimizer):
 
         self.fmin_and_grad = backend.func_and_grad(self.wrapped_lh)
         self.tol = tol
+        
 
     def minimize(self):
         result = minimize(
@@ -215,7 +214,7 @@ class ScipyMinimizer(AbstractMinimizer):
         )
 
         res_dict = restructure_args(
-            result.x, self.llh.get_analysis().exposed_parameters, self.fixed_pars
+            result.x, self.parameters, self.fixed_pars
         )
 
         return result, res_dict, result.fun
@@ -266,7 +265,7 @@ class MinuitMinimizer(AbstractMinimizer):
 
         names = [
             par_name
-            for par_name in self.llh.get_analysis().exposed_parameters
+            for par_name in self.parameters
             if par_name not in self.fixed_pars
         ]
 
@@ -318,7 +317,7 @@ class MinuitMinimizer(AbstractMinimizer):
 
         res_dict = restructure_args(
             self.minuit.values,
-            self.llh.get_analysis().exposed_parameters,
+            self.parameters,
             self.fixed_pars,
         )
 
