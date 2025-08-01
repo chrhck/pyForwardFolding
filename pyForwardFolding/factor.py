@@ -71,10 +71,9 @@ class AbstractFactor:
         Configurable markdown representation of the AbstractFactor object as a list.
 
         Args:
-            indent (str): String to prepend to each line for indentation. Default is empty.
+            indent_level (int): The level of indentation (each level adds 2 spaces). Default is 0.
             bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
             include_type_in_name (bool): Whether to include factor type in the name. Default is True.
-            sub_indent (str): Additional indentation for nested items. Default is "  ".
 
         Returns:
             str: A configurable markdown representation of the factor as a list.
@@ -178,10 +177,9 @@ class AbstractUnbinnedFactor(AbstractFactor):
         Configurable markdown representation of the AbstractUnbinnedFactor object as a list.
 
         Args:
-            indent (str): String to prepend to each line for indentation. Default is empty.
+            indent_level (int): The level of indentation (each level adds 2 spaces). Default is 0.
             bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
             include_type_in_name (bool): Whether to include factor type in the name. Default is True.
-            sub_indent (str): Additional indentation for nested items. Default is "  ".
 
         Returns:
             str: A configurable markdown representation of the unbinned factor as a list.
@@ -211,10 +209,12 @@ class AbstractBinnedFactor(AbstractFactor):
         param_mapping: Optional[Dict[str, str]] = None,
     ):
         """
-        Initialize the AbstractBinnedFactor with a name.
+        Initialize the AbstractBinnedFactor with a name, binning, and parameter mapping.
 
         Args:
             name (str): Identifier for the factor.
+            binning (AbstractBinning): The binning strategy for this factor.
+            param_mapping (Optional[Dict[str, str]]): Dictionary mapping factor parameter names to names in the parameter dictionary.
         """
         super().__init__(name, param_mapping)
         self.binning = binning
@@ -247,10 +247,9 @@ class AbstractBinnedFactor(AbstractFactor):
         Configurable markdown representation of the AbstractBinnedFactor object as a list.
 
         Args:
-            indent (str): String to prepend to each line for indentation. Default is empty.
+            indent_level (int): The level of indentation (each level adds 2 spaces). Default is 0.
             bullet_style (str): Style for bullet points ("-", "*", "+"). Default is "-".
             include_type_in_name (bool): Whether to include factor type in the name. Default is True.
-            sub_indent (str): Additional indentation for nested items. Default is "  ".
 
         Returns:
             str: A configurable markdown representation of the binned factor as a list.

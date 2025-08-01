@@ -65,7 +65,7 @@ class Model:
         Get all parameters exposed by the model's components.
 
         Returns:
-            Dict[str, Dict[str, str]]: A merged dictionary of all exposed parameters from all components.
+            Set[str]: A set of all exposed parameters from all components.
         """
 
         return {
@@ -94,7 +94,7 @@ class Model:
 
         Args:
             input_variables (Dict[str, Union[Array, float]]): Input variables for model evaluation.
-            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated components.
+            parameter_values (Dict[str, float]): Variables exposed by previously evaluated components.
 
         Returns:
             Array: The modified `output` containing the sum of all components.

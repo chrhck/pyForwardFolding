@@ -34,12 +34,11 @@ class BinnedExpectation:
         self.lifetime = lifetime
 
     @property
-    def required_variables(self) -> set:
+    def required_variables(self) -> Set[str]:
         """
         Get all variables required by the BinnedExpectation.
 
         Returns:
-            Set[str]: A union of the binning input variables and the model's required variables.
         """
 
         model_required_vars = set()
@@ -54,7 +53,7 @@ class BinnedExpectation:
         Get parameters exposed by the BinnedExpectation.
 
         Returns:
-            Dict[str, List[str]]: Variables exposed by the underlying model and binned factors.
+            Set[str]: A set of all exposed parameters from models and binned factors.
         """
 
         model_exposed = set()
@@ -78,7 +77,7 @@ class BinnedExpectation:
 
         Args:
             datasets (Dict[str, Dict[str, Union[Array, float]]]): A dictionary where keys are dataset names and values are dictionaries of input variables.
-            parameter_values (Dict[str, float]): A dictionary of parameter values, where keys are parameter names and values are arrays or scalars.
+            parameter_values (Dict[str, float]): A dictionary of parameter values, where keys are parameter names and values are floats.
 
         Returns:
             Tuple[Array, Array]: A tuple containing:

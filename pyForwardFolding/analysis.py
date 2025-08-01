@@ -50,7 +50,7 @@ class Analysis:
 
         Args:
             datasets (Dict[str, Dict[str, Union[Array, float]]]): A dictionary mapping component names to their input variables.
-            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated expectations.
+            parameter_values (Dict[str, float]): Variables exposed by previously evaluated expectations.
 
         Returns:
             Tuple[Dict[str, Array], Dict[str, Array]]: A tuple containing:

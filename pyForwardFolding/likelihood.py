@@ -56,12 +56,12 @@ class PoissonLikelihood(AbstractLikelihood):
 
         Args:
             observed_data (Dict[str, Array]): A dictionary mapping component names to observed data.
-            datasets ( Dict[str, float]): Input datasets for the model evaluation.
+            datasets (Dict[str, Dict[str, Union[Array, float]]]): Input datasets for the model evaluation.
             parameter_values (Dict[str, float]): Variables exposed by previously evaluated components.
             empty_bins (str): Strategy for handling empty bins (`"skip"` or `"throw"`).
 
         Returns:
-            float: The log-likelihood value.
+            Array: The log-likelihood value.
 
         Raises:
             ValueError: If empty bins are encountered and `empty_bins="throw"`.

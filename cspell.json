@@ -1,22 +1,37 @@
 {
-  "ignorePaths": ["CHANGELOG.md", "**/*changelog.md"],
-  "ignoreRegExpList": ["/(`{3})[\\s\\S]+?\\1/g", "/`([\\s\\S]+?)`/g"],
+  "ignorePaths": [
+    "CHANGELOG.md",
+    "**/*changelog.md"
+  ],
+  "ignoreRegExpList": [
+    "/(`{3})[\\s\\S]+?\\1/g",
+    "/`([\\s\\S]+?)`/g"
+  ],
   "languageSettings": [
     {
       "languageId": "python",
-      "includeRegExpList": ["/#.*/", "/('''|\"\"\")[^\\1]+?\\1/g"]
+      "includeRegExpList": [
+        "/#.*/",
+        "/('''|\"\"\")[^\\1]+?\\1/g"
+      ]
     },
     {
       "languageId": "javascript",
-      "includeRegExpList": ["CStyleComment"]
+      "includeRegExpList": [
+        "CStyleComment"
+      ]
     },
     {
       "languageId": "json",
-      "includeRegExpList": ["CStyleComment"]
+      "includeRegExpList": [
+        "CStyleComment"
+      ]
     },
     {
       "languageId": "typescript",
-      "includeRegExpList": ["CStyleComment"]
+      "includeRegExpList": [
+        "CStyleComment"
+      ]
     }
   ],
   "useGitignore": true,
@@ -44,8 +59,8 @@
     "dotenv",
     "dotfiles",
     "extensibly",
-    "fastapi's",
     "fastapi",
+    "fastapi's",
     "fastenv",
     "gunicorn",
     "heredoc",
@@ -88,11 +103,12 @@
     "sha",
     "shas",
     "sourcery",
-    "starlette's",
     "starlette",
+    "starlette's",
     "stdlib",
     "subpackages",
     "typeshed",
+    "unbinned",
     "unittests",
     "uvicorn",
     "vendorizes",

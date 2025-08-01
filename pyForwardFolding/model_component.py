@@ -31,7 +31,7 @@ class ModelComponent:
         Get the variables exposed by each factor in the model component.
 
         Returns:
-            Dict[str, Dict[str, str]]: A dictionary mapping factor names to their exposed variables.
+            Set[str]: A set of all exposed parameters from all factors.
         """
         exposed = set()
         for factor in self.factors:
@@ -67,9 +67,8 @@ class ModelComponent:
         Evaluate all factors in the model component in sequence, updating the output.
 
         Args:
-            output (Array): Vector that will be modified by the evaluation.
             input_variables (Dict[str, Union[Array, float]]): Variables available as inputs to the factors.
-            parameter_values (Dict[str, Union[Array, float]]): Variables exposed by previously evaluated factors.
+            parameter_values (Dict[str, float]): Variables exposed by previously evaluated factors.
 
         Returns:
             Array: The modified output vector.
