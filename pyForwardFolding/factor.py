@@ -736,6 +736,11 @@ class PerBinPolynomial(AbstractBinnedFactor):
                 "PerBinPolynomial only supports up to 2nd and 3rd order polynomials."
             )
 
+        if self.binning.hist_dims != coefficients.shape[1:]:
+            raise ValueError(
+                f"Shape of coefficients {coefficients.shape[1:]} does not match binning dimensions {self.binning.hist_dims}."
+            )
+
         self.coefficients = coefficients
         self.factor_parameters = ["scale"]
 
