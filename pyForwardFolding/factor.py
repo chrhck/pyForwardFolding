@@ -708,10 +708,95 @@ class SoftCut(AbstractUnbinnedFactor):
         return backend.sigmoid(self.slope * (cut_var - cut_val))
 
 
+class PerBinPolynomial(AbstractBinnedFactor):
+    """
+    Factor that applies a polynomial reweighting per bin.
+    The polynomial coefficients are provided as a list of lists,
+    where each inner list corresponds to a bin and contains the coefficients
+    for the polynomial in that bin.
+
+    Args:
+        name (str): Identifier for the factor.
+        binning (AbstractBinning): Binning object for the factor.
+        coefficients (List[List[float]]): List of lists containing polynomial coefficients for each bin.
+        param_mapping (Optional[Dict[str, str]]): Dictionary mapping factor parameter names to names in the parameter dictionary.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        binning: AbstractBinning,
+        coefficients: Array,
+        param_mapping: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(name, binning, param_mapping)
+
+        if coefficients.shape[0] in [2, 3]:
+            raise ValueError(
+                "PerBinPolynomial only supports up to 2nd and 3rd order polynomials."
+            )
+
+        self.coefficients = coefficients
+        self.factor_parameters = ["scale"]
+
+    @classmethod
+    def construct_from(
+        cls, config: Dict[str, Any], binning: AbstractBinning
+    ) -> "PerBinPolynomial":
+        
+        coeffs_file = config.get("coefficients_file", None)
+        if coeffs_file is not None:
+            with open(coeffs_file, "rb") as f:
+                coefficients = pickle.load(f)
+        else:
+            raise ValueError(
+                "Configuration must contain 'coefficients_file' key to load polynomial coefficients."
+            )
+        
+        return PerBinPolynomial(
+            name=config["name"],
+            binning=binning,
+            coefficients=coefficients,
+            param_mapping=config.get("param_mapping", None),
+        )
+
+    def evaluate(
+        self, input_variables, parameter_values: Dict[str, float]
+    ) -> Tuple[Array, Optional[Array]]:
+        """
+        Evaluate the polynomial reweighting for each bin based on the input variables.
+
+        Args:
+            input_variables (dict): Dictionary containing input variables.
+            parameter_values (dict): Dictionary containing parameter values.
+
+        Returns:
+            Tuple[Array, Array]: Mean and variance of the polynomial reweighting per bin.
+        """
+        
+        exposed_values = get_parameter_values(self, parameter_values)
+        scale = exposed_values["scale"]
+
+
+        if self.coefficients.shape[0] == 2:
+            mu_add = scale * self.coefficients[0] + self.coefficients[1]
+
+        elif self.coefficients.shape[0] == 3:
+            mu_add = (
+                scale**2 * self.coefficients[0]
+                + scale * self.coefficients[1] 
+                + self.coefficients[2]
+            )
+        else:
+            raise RuntimeError(
+                "PerBinPolynomial only supports 2nd and 3rd order polynomials")
+        
+        return mu_add, None
+
 class SnowStormGradient(AbstractBinnedFactor):
     """
     Factor that applies a systematic parameter gradient.
-    Is aplied additive to each detector histogram.
+    Is applied additive to each detector histogram.
     """
 
     def __init__(
