@@ -11,6 +11,7 @@ from . import (
     minimizer,
     model,
     model_component,
+    statistics,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "minimizer",
     "model",
     "model_component",
+    "statistics",
 ]

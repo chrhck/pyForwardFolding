@@ -19,6 +19,15 @@ class Backend(Protocol):
     Protocol for backend interface for numerical operations.
     """
 
+    def __init__(self, rng_seed: int = 0):
+        """
+        Initialize the backend with an optional random seed.
+        
+        Args:
+            rng_seed (int): Random seed for reproducibility.
+        """
+        ...
+
     def array(self, data: Any, dtype: Any = None) -> Array:
         """Create an array from data."""
         ...
@@ -229,12 +238,88 @@ class Backend(Protocol):
         """
         ...
 
+
+    def quantile(self, x: Array, q: Array) -> Array:
+        """
+        Compute the quantile of an array.
+        
+        Args:
+            x (Array): Input array.
+            q (float): Quantile to compute (0 <= q <= 1).
+
+        Returns:
+            Array: The computed quantile value.
+        """
+        ...
+
     def repeat(self, x: Array, repeats, axis=None, total_repeat_length=None) -> Array:
         """
         Repeat elements of an array.
         """
         ...
 
+    def poiss_rng(self, lam: Array) -> Array:
+        """
+        Generate random numbers from a Poisson distribution.
+        
+        Args:
+            lam (Array): The rate parameter (lambda) of the Poisson distribution.
+
+        Returns:
+            Array: Random numbers drawn from the Poisson distribution.
+        """
+        ...
+
+    def chi2_logsf(self, x:ArrayLike, df: int) -> Array:
+        """
+        Compute the log survival function of the chi-squared distribution.
+        
+        Args:
+            x (Array): The value at which to evaluate the log survival function.
+            df (int): Degrees of freedom of the chi-squared distribution.
+
+        Returns:
+            Array: The log survival function value.
+        """
+        ...
+
+    def norm_ppf(self, p: ArrayLike) -> Array:
+        """
+        Compute the percent point function (inverse CDF) of the normal distribution.
+        
+        Args:
+            p (float): The probability value for which to compute the PPF.
+
+        Returns:
+            Array: The PPF value corresponding to the given probability.
+        """
+        ...
+
+    def norm_sf(self, x: ArrayLike) -> Array:
+        """
+        Compute the survival function (1 - CDF) of the normal distribution.
+        
+        Args:
+            x (ArrayLike): The value at which to evaluate the survival function.
+
+        Returns:
+            Array: The survival function value.
+        """
+        ...
+
+
+    def median(self, x: ArrayLike) -> Array:
+        """
+        Compute the median of an array.
+        
+        Args:
+            x (ArrayLike): Input array.
+
+        Returns:
+            Array: The median value.
+        """
+        ...
+       
 
 class JAXBackend:
     """
@@ -244,6 +329,15 @@ class JAXBackend:
     because it uses structural typing - any class that implements
     all the required methods automatically satisfies the protocol.
     """
+
+    def __init__(self, rng_seed: int = 0):
+        """
+        Initialize the JAX backend with an optional random seed.
+        
+        Args:
+            rng_seed (int): Random seed for reproducibility.
+        """
+        self.rng_key = jax.random.PRNGKey(rng_seed)
 
     def array(self, data: Any, dtype: Any = None) -> JAXArray:
         return jnp.array(data, dtype=dtype)
@@ -440,6 +534,20 @@ class JAXBackend:
 
     def weighted_median(self, x: ArrayLike, weights: ArrayLike) -> JAXArray:
         return self.weighted_quantile(x, weights, 0.5)
+    
+    def quantile(self, x: ArrayLike, q: ArrayLike) -> JAXArray:
+        """
+        Compute the quantile of an array.
+        
+        Args:
+            x (ArrayLike): Input array.
+            q (float): Quantile to compute (0 <= q <= 1).
+
+        Returns:
+            JAXArray: The computed quantile value.
+        """
+        x = jnp.asarray(x)
+        return jnp.quantile(x, q)
 
     def any(self, x: ArrayLike) -> JAXArray:
         x = jnp.asarray(x)
@@ -462,6 +570,76 @@ class JAXBackend:
         """
         x = jnp.asarray(x)
         return jnp.repeat(x, repeats, axis=axis, total_repeat_length=total_repeat_length)
+
+    def poiss_rng(self, lam: ArrayLike) -> JAXArray:
+        """
+        Generate random numbers from a Poisson distribution.
+        
+        Args:
+            lam (ArrayLike): The rate parameter (lambda) of the Poisson distribution.
+            seed (int): Random seed for reproducibility.
+        
+        Returns:
+            JAXArray: Random numbers drawn from the Poisson distribution.
+        """
+        key, new_key = jax.random.split(self.rng_key)
+        self.rng_key = new_key
+        lam = jnp.asarray(lam)
+        return jax.random.poisson(key, jnp.asarray(lam))
+    
+    def chi2_logsf(self, x: ArrayLike, df: int) -> JAXArray:
+        """
+        Compute the log survival function of the chi-squared distribution.
+        
+        Args:
+            x (ArrayLike): The value at which to evaluate the log survival function.
+            df (int): Degrees of freedom of the chi-squared distribution.
+
+        Returns:
+            JAXArray: The log survival function value.
+        """
+        x = jnp.asarray(x)
+        return jax.scipy.stats.chi2.logsf(x, df)
+    
+    def norm_ppf(self, p: ArrayLike) -> JAXArray:
+        """
+        Compute the percent point function (inverse CDF) of the normal distribution.
+        
+        Args:
+            p (ArrayLike): The probability value for which to compute the PPF.
+
+        Returns:
+            JAXArray: The PPF value corresponding to the given probability.
+        """
+        p = jnp.asarray(p)
+        return jax.scipy.stats.norm.ppf(p)
+    
+
+    def norm_sf(self, x: ArrayLike) -> JAXArray:
+        """
+        Compute the survival function (1 - CDF) of the normal distribution.
+        
+        Args:
+            x (ArrayLike): The value at which to evaluate the survival function.
+
+        Returns:
+            JAXArray: The survival function value.
+        """
+        x = jnp.asarray(x)
+        return jax.scipy.stats.norm.sf(x)
+
+    def median(self, x: ArrayLike) -> JAXArray:
+        """
+        Compute the median of an array.
+        
+        Args:
+            x (ArrayLike): Input array.
+
+        Returns:
+            JAXArray: The median value.
+        """
+        x = jnp.asarray(x)
+        return jnp.median(x)
 
 # Type aliases for convenience
 JAXBackendType = Backend

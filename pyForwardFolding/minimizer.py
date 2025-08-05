@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Dict, List, Optional, Set, Tuple, TypeVar
+from typing import Any, Dict, List, Optional, Set, Tuple, TypeVar, cast
 
 import iminuit
 from scipy.optimize import Bounds, minimize
@@ -158,6 +158,16 @@ class AbstractMinimizer:
         self.parameters = sorted(list(self.llh.get_analysis().exposed_parameters))
 
         bounds_list = destructure_args(bounds, self.parameters, fixed_pars)
+        exposed_vars = self.llh.get_analysis().exposed_parameters
+
+        if set(self.fixed_pars.keys()) == exposed_vars:
+            # All params are fixied, no need to optimize
+            self.all_fixed = True
+        else:
+            self.all_fixed = False
+
+
+        bounds_list = destructure_args(bounds, self.parameters, fixed_pars)
         bounds_lower = [bound[0] for bound in bounds_list]
         bounds_upper = [bound[1] for bound in bounds_list]
         seeds_list = destructure_args(seeds, self.parameters, fixed_pars)
@@ -167,8 +177,9 @@ class AbstractMinimizer:
 
         self.wrapped_lh = WrappedLLH(llh, obs, dataset, fixed_pars, self.priors)
 
-    def minimize(self):
+    def minimize(self) -> Tuple[Any, Dict[str, Any], Array]:
         raise NotImplementedError("Subclasses should implement this method.")
+    
 
 
 class ScipyMinimizer(AbstractMinimizer):
@@ -202,7 +213,16 @@ class ScipyMinimizer(AbstractMinimizer):
         self.tol = tol
         
 
-    def minimize(self):
+    def minimize(self) -> Tuple[Any, Dict[str, Any], Array]:
+
+        if self.all_fixed:            
+            flat_params = destructure_args(
+                self.fixed_pars, self.parameters
+            )
+            result = self.wrapped_lh(flat_params)
+            return None, self.fixed_pars, result
+
+
         result = minimize(
             self.fmin_and_grad,
             self.seeds,
@@ -212,6 +232,8 @@ class ScipyMinimizer(AbstractMinimizer):
             tol=self.tol,
             options={"maxls": 50, "maxcor": 50},
         )
+
+       
 
         res_dict = restructure_args(
             result.x, self.parameters, self.fixed_pars
@@ -301,7 +323,7 @@ class MinuitMinimizer(AbstractMinimizer):
 
         return message
 
-    def minimize(self):
+    def minimize(self) -> Tuple[Any, Dict[str, Any], Array]:
         if self.simplex_prefit:
             self.minuit.simplex().migrad()
         else:
@@ -321,12 +343,15 @@ class MinuitMinimizer(AbstractMinimizer):
             self.fixed_pars,
         )
 
-        fun = self.minuit.fval
+        fun = backend.array(cast(float, self.minuit.fval))
         print("best-fit llh: ", fun)
         print("----------------")
         print("best-fit parameters:")
         for key, val in res_dict.items():
             print(f"{key}: {val}")
         print("----------------")
+
+        if fun is None:
+            raise RuntimeError("Minimization failed, no function value returned.")
 
         return minimizer_info, res_dict, fun
