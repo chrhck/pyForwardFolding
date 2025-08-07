@@ -1,11 +1,24 @@
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 
+import numpy as np
 import scipy.optimize as sopt
+import scipy.stats
 
 from .analysis import Analysis
 from .backend import Array, backend
 from .likelihood import AbstractLikelihood
-from .minimizer import ScipyMinimizer
+from .minimizer import AbstractMinimizer, ScipyMinimizer
 
 
 class PseudoExpGenerator:
@@ -39,6 +52,9 @@ class PseudoExpGenerator:
             yield obs
 
 
+MT = TypeVar("MT", bound=AbstractMinimizer)
+
+
 class Hypothesis:
     """
     A class to represent a hypothesis for hypothesis testing.
@@ -48,22 +64,17 @@ class Hypothesis:
         self,
         name: str,
         likelihood: AbstractLikelihood,
-        datasets: Dict,
-        bounds: Dict[str, Tuple[float, float]],
-        seeds: Dict[str, float],
-        priors: Optional[Dict[str, Tuple[float, float]]] = None,
         fixed_pars: Optional[Dict[str, float]] = None,
+        minimizer: Optional[MT] = None,
     ):
         """
         Initialize the Hypothesis.
         """
         self.name = name
-        self.datasets = datasets
-        self.fixed_pars = fixed_pars
+        self.fixed_pars = fixed_pars if fixed_pars is not None else {}
         self.likelihood = likelihood
-        self.priors = priors
-        self.bounds = bounds
-        self.seeds = seeds
+        self.seeds = likelihood.get_seeds()
+        self.minimizer = minimizer or ScipyMinimizer(likelihood)
 
     @property
     def model_parameters(self) -> Set[str]:
@@ -73,40 +84,41 @@ class Hypothesis:
         Returns:
             Set[str]: A set of model parameter names.
         """
-        return (
-            self.likelihood.get_analysis().exposed_parameters
-            - set(self.fixed_pars.keys())
-            if self.fixed_pars
-            else self.likelihood.get_analysis().exposed_parameters
+        return self.likelihood.get_analysis().exposed_parameters - set(
+            self.fixed_pars.keys()
         )
 
     def evaluate(
-        self, observed_data: Dict[str, Array], detailed=False
+        self,
+        observed_data: Dict[str, Array],
+        dataset: Dict[str, Dict[str, Array | float]],
+        parameter_values: Optional[Dict[str, float]] = None,
+        detailed=False,
     ) -> Union[Array, Tuple[Any, Dict[str, Array], Array]]:
         """
         Evaluate the hypothesis against observed data.
 
         Args:
             observed_data (Dict[str, Array]): The observed data to evaluate.
+            dataset (Dict[str, Dict[str, Array | float]]): The input datasets for the model evaluation.
+            parameter_values (Optional[Dict[str, float]]): The parameter values for the hypothesis.
+                If not provided, the seeds will be used.
+            detailed (bool): If True, return detailed results including the minimizer result.
 
         Returns:
             float: The log-likelihood value for the hypothesis.
         """
 
-        mini = ScipyMinimizer(
-            self.likelihood,
-            observed_data,
-            self.datasets,
-            self.bounds,
-            self.seeds,
-            self.priors,
-            self.fixed_pars,
+        all_fixed_pars = (
+            (self.seeds | parameter_values) if parameter_values else self.fixed_pars
         )
 
+        res = self.minimizer.minimize(observed_data, dataset, all_fixed_pars)
+
         if detailed:
-            return mini.minimize()
+            return res
         else:
-            return mini.minimize()[2]  # Return the log-likelihood value
+            return res[2]  # Return the log-likelihood value
 
     @property
     def nparams(self) -> int:
@@ -116,15 +128,15 @@ class Hypothesis:
         Returns:
             int: The number of parameters.
         """
-        return (
-            len(self.likelihood.get_analysis().exposed_parameters)
-            - len(self.fixed_pars)
-            if self.fixed_pars
-            else len(self.likelihood.get_analysis().exposed_parameters)
+        return len(self.likelihood.get_analysis().exposed_parameters) - len(
+            self.fixed_pars
         )
 
     def generate_pseudo_experiments(
-        self, nexp: int, parameter_values: Optional[Dict[str, float]] = None
+        self,
+        nexp: int,
+        dataset: Dict[str, Dict[str, Array | float]],
+        parameter_values: Optional[Dict[str, float]] = None,
     ) -> Generator[Dict[str, Array], None, None]:
         """
         Generate pseudo-experiments for the hypothesis.
@@ -144,17 +156,23 @@ class Hypothesis:
             all_parameter_values.update(parameter_values)
 
         gen = PseudoExpGenerator(
-            self.likelihood.get_analysis(), self.datasets, all_parameter_values
+            self.likelihood.get_analysis(), dataset, all_parameter_values
         )
         return gen.generate(nexp)
 
-    def asimov_experiment(self):
-        parameter_values = (
+    def asimov_experiment(
+        self,
+        dataset: Dict[str, Dict[str, Array | float]],
+        parameter_values: Optional[Dict[str, float]] = None,
+    ):
+        all_parameter_values = (
             self.seeds | self.fixed_pars if self.fixed_pars else self.seeds
         )
+        if parameter_values is not None:
+            all_parameter_values.update(parameter_values)
 
         hist, hist_ssq = self.likelihood.get_analysis().evaluate(
-            self.datasets, parameter_values
+            dataset, all_parameter_values
         )
 
         return hist
@@ -165,7 +183,12 @@ class HypothesisTest:
     A class to perform hypothesis testing using pseudo-experiments.
     """
 
-    def __init__(self, h0: Hypothesis, h1: Hypothesis):
+    def __init__(
+        self,
+        h0: Hypothesis,
+        h1: Hypothesis,
+        dataset: Dict[str, Dict[str, Array | float]],
+    ):
         """
         Initialize the HypothesisTest with two hypotheses.
 
@@ -175,6 +198,7 @@ class HypothesisTest:
         """
         self.h0 = h0
         self.h1 = h1
+        self.dataset = dataset
 
     @property
     def free_parameters(self) -> Set[str]:
@@ -196,7 +220,11 @@ class HypothesisTest:
         """
         return self.h1.nparams - self.h0.nparams
 
-    def test(self, observed_data: Dict[str, Array]) -> float:
+    def test(
+        self,
+        observed_data: Dict[str, Array],
+        parameter_values: Optional[Dict[str, float]] = None,
+    ) -> float:
         """
         Perform a hypothesis test against observed data.
 
@@ -207,8 +235,18 @@ class HypothesisTest:
             float: The p-value of the hypothesis test.
         """
 
-        llh0 = cast(float, self.h0.evaluate(observed_data, detailed=False))
-        llh1 = cast(float, self.h1.evaluate(observed_data, detailed=False))
+        llh0 = cast(
+            float,
+            self.h0.evaluate(
+                observed_data, self.dataset, parameter_values, detailed=False
+            ),
+        )
+        llh1 = cast(
+            float,
+            self.h1.evaluate(
+                observed_data, self.dataset, parameter_values, detailed=False
+            ),
+        )
 
         dllh = 2 * (llh0 - llh1)
 
@@ -227,12 +265,14 @@ class HypothesisTest:
 
         ts_vals = []
 
-        for exp in self.h0.generate_pseudo_experiments(nexp):
+        for exp in self.h0.generate_pseudo_experiments(nexp, self.dataset):
             ts_vals.append(self.test(exp))
 
         return ts_vals
 
-    def alt_dist(self, nexp: int) -> List[float]:
+    def alt_dist(
+        self, nexp: int, parameter_values: Optional[Dict[str, float]] = None
+    ) -> List[float]:
         """
         Generate the null distribution for the hypothesis test.
 
@@ -245,7 +285,9 @@ class HypothesisTest:
 
         ts_vals = []
 
-        for exp in self.h1.generate_pseudo_experiments(nexp):
+        for exp in self.h1.generate_pseudo_experiments(
+            nexp, self.dataset, parameter_values
+        ):
             ts_vals.append(self.test(exp))
 
         return ts_vals
@@ -257,7 +299,23 @@ class HypothesisTest:
         sigma_level: float = 3,
         xtol=0.05,
         maxiter=25,
+        null_dist: Optional[Array] = None,
     ) -> Tuple[Array, Array, float]:
+        """
+        Calculate the discovery potential of the hypothesis test.
+
+        Args:
+            nexp_null (int): The number of pseudo-experiments for the null hypothesis.
+            nexp_alt (int): The number of pseudo-experiments for the alternative hypothesis.
+            sigma_level (float, optional): The sigma level for the test. Defaults to 3.
+            xtol (float, optional): The tolerance for root finding. Defaults to 0.05.
+            maxiter (int, optional): The maximum number of iterations for root finding. Defaults to 25.
+            null_dist (Optional[List[float]], optional): Precomputed null distribution. Defaults to None.
+
+        Returns:
+            Tuple[Array, Array, float]: A tuple containing the null distribution, alternative distribution, and the parameter value at which the alternative hypothesis is discovered.
+        """
+
         if self.dof != 1:
             raise ValueError(
                 "Discovery potential is only implemented for one degree of freedom"
@@ -268,12 +326,20 @@ class HypothesisTest:
         # Calc p-value for sigma level
         p_value = 1 - backend.norm_sf(sigma_level)
 
-        null_dist = backend.array(self.null_dist(nexp_null))
+        if null_dist is None:
+            # Generate the null distribution
+            null_dist = backend.array(self.null_dist(nexp_null))
 
         # Calculate the threshold for discovery
         threshold = backend.quantile(null_dist, p_value)
 
-        param_bounds = self.h1.bounds[free_param]
+        if threshold == backend.max(null_dist):
+            raise ValueError(
+                "The null distribution does not contain a value below the threshold. "
+                "Increase nexp_null or decrease sigma_level."
+            )
+
+        param_bounds = self.h1.likelihood.get_bounds()[free_param]
 
         def pexp_and_fit(x):
             """
@@ -283,17 +349,117 @@ class HypothesisTest:
             alt_dist = backend.array([self.test(exp) for exp in pexps])
             return backend.median(alt_dist)
 
-        alt_param_val = cast(float, sopt.brentq(
-            lambda x: pexp_and_fit(x) - threshold,
-            param_bounds[0],
-            param_bounds[1],
-            xtol=xtol,
-            maxiter=maxiter,
-        ))
+        alt_param_val = cast(
+            float,
+            sopt.brentq(
+                lambda x: pexp_and_fit(x) - threshold,
+                param_bounds[0],
+                param_bounds[1],
+                xtol=xtol,
+                maxiter=maxiter,
+            ),
+        )
 
         pexps = self.h1.generate_pseudo_experiments(
-            nexp_null, {free_param: alt_param_val}
+            nexp_null, self.dataset, {free_param: alt_param_val}
         )
         alt_dist = backend.array([self.test(exp) for exp in pexps])
 
         return null_dist, alt_dist, alt_param_val
+
+    def discovery_potential_asimov(
+        self, sigma_level: float = 3, xtol=0.05, maxiter=25
+    ) -> float:
+        """
+        Calculate the discovery potential of the hypothesis test using the Asimov dataset.
+
+        Args:
+            sigma_level (float, optional): The sigma level for the test. Defaults to 3.
+
+        Returns:
+            float: The discovery potential value.
+        """
+
+        if self.dof != 1:
+            raise ValueError(
+                "Discovery potential is only implemented for one degree of freedom"
+            )
+
+        free_param = list(self.free_parameters)[0]
+        threshold = scipy.stats.chi2.ppf(
+            1 - 2 * scipy.stats.norm.sf(sigma_level), self.dof
+        )
+
+        def asimov_and_fit(x):
+            """
+            Generate the Asimov dataset and fit the alternative hypothesis to find the median.
+            """
+            asimov_exp = self.h1.asimov_experiment(self.dataset, {free_param: x})
+            return self.test(asimov_exp)
+
+        param_bounds = self.h1.likelihood.get_bounds()[free_param]
+
+        alt_param_val = cast(
+            float,
+            sopt.brentq(
+                lambda x: asimov_and_fit(x) - threshold,
+                param_bounds[0],
+                param_bounds[1],
+                xtol=xtol,
+                maxiter=maxiter,
+            ),
+        )
+
+        return alt_param_val
+
+    def power(self, nexp: int, sigma_level: float = 3) -> float:
+        """
+        Calculate the power of the hypothesis test.
+
+        Args:
+            nexp (int): The number of pseudo-experiments to generate.
+            sigma_level (float, optional): The sigma level for the test. Defaults to 3.
+
+        Returns:
+            float: The power of the hypothesis test.
+        """
+
+        null_dist = backend.array(self.null_dist(nexp))
+        threshold = backend.quantile(null_dist, 1 - backend.norm_sf(sigma_level))
+
+        alt_dist = backend.array(self.alt_dist(nexp))
+
+        # Calculate the power as the fraction of alternative distribution above the threshold
+        power = backend.mean(alt_dist > threshold)
+
+        return cast(float, power)
+
+    def scan(
+        self,
+        observed_data: Dict[str, Array],
+        scan_points: int,
+    ):
+
+        if self.dof != 1:
+            raise ValueError(
+                "Scan is only implemented for one degree of freedom"
+            )
+
+        free_param = list(self.free_parameters)[0]
+
+        param_bounds = self.h1.likelihood.get_bounds()[free_param]
+
+        scan_grid = np.linspace(param_bounds[0], param_bounds[1], scan_points)
+        ts_values = []
+        h1_eval = self.h1.evaluate(observed_data, self.dataset, detailed=False)
+        for scan_point in scan_grid:
+            fp = {free_param: scan_point}
+           
+            h0_eval = self.h0.evaluate(
+                observed_data, self.dataset, fp, detailed=False
+            )
+
+            ts = 2 * (cast(float, h0_eval) - cast(float, h1_eval))
+            ts_values.append(ts)
+
+        return scan_grid, ts_values

@@ -5,7 +5,7 @@ import iminuit
 from scipy.optimize import Bounds, minimize
 
 from .backend import Array, backend
-from .likelihood import AbstractLikelihood, AbstractPrior, GaussianUnivariatePrior
+from .likelihood import AbstractLikelihood
 
 
 def flat_index_dict_mapping(
@@ -99,14 +99,14 @@ class WrappedLLH:
         obs: Dict,
         datasets: Dict,
         fixed_params: Dict,
-        prior: List[AbstractPrior],
     ):
         self.likelihood = likelihood
         self.obs = obs
         self.datasets = datasets
         self.fixed_params = fixed_params
-        self.prior = prior
-        self.parameters = sorted(list(self.likelihood.get_analysis().exposed_parameters))
+        self.parameters = sorted(
+            list(self.likelihood.get_analysis().exposed_parameters)
+        )
 
     def __call__(self, flat_params) -> Array:
         """
@@ -118,10 +118,10 @@ class WrappedLLH:
         Returns:
             float: The negative likelihood value.
         """
-        restructured_args = restructure_args(flat_params, self.parameters, self.fixed_params)
+        restructured_args = restructure_args(
+            flat_params, self.parameters, self.fixed_params
+        )
         binned_llh = self.likelihood.llh(self.obs, self.datasets, restructured_args)
-        for p in self.prior:
-            binned_llh += p.log_pdf(restructured_args)
         return -binned_llh
 
 
@@ -133,111 +133,95 @@ class AbstractMinimizer:
         llh (AbstractLikelihood): The likelihood function to minimize.
         obs (Dict): Observed data.
         dataset (Dict): Input datasets.
-        bounds: Bounds for the optimization parameters.
-        seeds: Initial guesses for the optimization parameters.
-        priors (Dict): Prior distributions for the parameters.
         fixed_pars (Dict): Parameters to keep fixed during optimization.
     """
 
     def __init__(
         self,
         llh: AbstractLikelihood,
-        obs: Dict,
-        dataset: Dict,
-        bounds: Dict[str, Tuple[float, float]],
-        seeds: Dict[str, float],
-        priors: Dict[str, Tuple[float, float]] = {},
-        fixed_pars: Dict[str, float] = {},
     ):
         self.llh = llh
-        self.obs = obs
-        self.dataset = dataset
-        self.priors: List[AbstractPrior] = []
-        self.priors.append(GaussianUnivariatePrior(priors))
-        self.fixed_pars = fixed_pars
-        self.parameters = sorted(list(self.llh.get_analysis().exposed_parameters))
+        self.exposed_vars = self.llh.get_analysis().exposed_parameters
 
-        bounds_list = destructure_args(bounds, self.parameters, fixed_pars)
-        exposed_vars = self.llh.get_analysis().exposed_parameters
+        self.parameters = sorted(list(self.exposed_vars))
 
-        if set(self.fixed_pars.keys()) == exposed_vars:
-            # All params are fixied, no need to optimize
-            self.all_fixed = True
-        else:
-            self.all_fixed = False
+    def make_bounds(self, fixed_pars: Optional[Dict[str, float]] = None) -> Bounds:
+        """
+        Create bounds for the optimization.
+        """
+        bounds_dict = {}
+        for prior in self.llh.priors:
+            bounds_dict.update(prior.prior_bounds)
 
-
-        bounds_list = destructure_args(bounds, self.parameters, fixed_pars)
+        bounds_list = destructure_args(bounds_dict, self.parameters, fixed_pars)
         bounds_lower = [bound[0] for bound in bounds_list]
         bounds_upper = [bound[1] for bound in bounds_list]
-        seeds_list = destructure_args(seeds, self.parameters, fixed_pars)
+        return Bounds(bounds_lower, bounds_upper)  # type: ignore
 
-        self.bounds = Bounds(bounds_lower, bounds_upper)  # type: ignore
-        self.seeds = seeds_list
+    def make_seeds(self, fixed_pars: Optional[Dict[str, float]] = None) -> List[float]:
+        """
+        Create seeds for the optimization.
+        """
+        seeds_dict = {}
+        for prior in self.llh.priors:
+            seeds_dict.update(prior.prior_seeds)
 
-        self.wrapped_lh = WrappedLLH(llh, obs, dataset, fixed_pars, self.priors)
+        return destructure_args(seeds_dict, self.parameters, fixed_pars)
 
-    def minimize(self) -> Tuple[Any, Dict[str, Any], Array]:
+    def minimize(
+        self,
+        obs: Dict,
+        dataset: Dict,
+        fixed_pars: Optional[Dict[str, float]] = None,
+    ) -> Tuple[Any, Dict[str, Any], Array]:
         raise NotImplementedError("Subclasses should implement this method.")
-    
 
 
 class ScipyMinimizer(AbstractMinimizer):
     def __init__(
         self,
         llh: AbstractLikelihood,
-        obs: dict,
-        dataset: dict,
-        bounds: Dict[str, Tuple[float, float]],
-        seeds: Dict[str, float],
-        priors: Optional[Dict[str, Tuple[float, float]]] = None,
-        fixed_pars: Optional[Dict[str, float]] = None,
         tol: float = 1e-10,
     ):
-        if priors is None:
-            priors = {}
+        super().__init__(
+            llh=llh,
+        )
+
+        self.tol = tol
+
+    def minimize(
+        self,
+        obs: Dict,
+        dataset: Dict,
+        fixed_pars: Optional[Dict[str, float]] = None,
+    ) -> Tuple[Any, Dict[str, Any], Array]:
         if fixed_pars is None:
             fixed_pars = {}
 
-        super().__init__(
-            llh=llh,
-            obs=obs,
-            dataset=dataset,
-            bounds=bounds,
-            seeds=seeds,
-            priors=priors,
-            fixed_pars=fixed_pars,
-        )
+        wrapped_lh = WrappedLLH(self.llh, obs, dataset, fixed_pars)
+        fmin_and_grad = backend.func_and_grad(wrapped_lh)
 
-        self.fmin_and_grad = backend.func_and_grad(self.wrapped_lh)
-        self.tol = tol
-        
+        all_fixed = set(fixed_pars.keys()) == self.exposed_vars
 
-    def minimize(self) -> Tuple[Any, Dict[str, Any], Array]:
+        if all_fixed:
+            flat_params = destructure_args(fixed_pars, self.parameters)
+            result = wrapped_lh(flat_params)
+            return None, fixed_pars, result
 
-        if self.all_fixed:            
-            flat_params = destructure_args(
-                self.fixed_pars, self.parameters
-            )
-            result = self.wrapped_lh(flat_params)
-            return None, self.fixed_pars, result
-
+        seeds_flat = self.make_seeds(fixed_pars)
+        bounds = self.make_bounds(fixed_pars)
 
         result = minimize(
-            self.fmin_and_grad,
-            self.seeds,
-            bounds=self.bounds,
+            fmin_and_grad,
+            seeds_flat,
+            bounds=bounds,
             jac=True,
             method="L-BFGS-B",
             tol=self.tol,
             options={"maxls": 50, "maxcor": 50},
         )
 
-       
-
-        res_dict = restructure_args(
-            result.x, self.parameters, self.fixed_pars
-        )
+        res_dict = restructure_args(result.x, self.parameters, fixed_pars)
 
         return result, res_dict, result.fun
 
@@ -259,62 +243,28 @@ class MinuitMinimizer(AbstractMinimizer):
     def __init__(
         self,
         llh: AbstractLikelihood,
-        obs: dict,
-        dataset: dict,
-        bounds: Dict[str, Tuple[float, float]],
-        seeds: Dict[str, float],
-        priors: Optional[Dict[str, Tuple[float, float]]] = None,
-        fixed_pars: Optional[Dict[str, float]] = None,
         simplex_prefit: bool = False,
     ):
-        if priors is None:
-            priors = {}
-        if fixed_pars is None:
-            fixed_pars = {}
-
         super().__init__(
             llh=llh,
-            obs=obs,
-            dataset=dataset,
-            bounds=bounds,
-            seeds=seeds,
-            priors=priors,
-            fixed_pars=fixed_pars,
         )
-
-        self.func = wrap_func_np_cache(backend.compile(self.wrapped_lh))
-        self.grad = wrap_func_np_cache(backend.compile(backend.grad(self.wrapped_lh)))
-
-        names = [
-            par_name
-            for par_name in self.parameters
-            if par_name not in self.fixed_pars
-        ]
-
-        self.minuit = iminuit.Minuit(self.func, self.seeds, grad=self.grad, name=names)  # type: ignore
-
-        bound_list = [[lb, ub] for lb, ub in zip(self.bounds.lb, self.bounds.ub)]
-        self.minuit.errordef = self.minuit.LIKELIHOOD
-        self.minuit.limits = bound_list
-        self.minuit.strategy = 1
-        self.minuit.tol = 1e-2
-        self.minuit.print_level = 0
 
         self.simplex_prefit = simplex_prefit
 
-    def _build_message(self):
+    @staticmethod
+    def _build_message(minuit):
         """
         Helper function for building a short fit message.
         """
-        if self.minuit.valid:
+        if minuit.valid:
             message = "Optimization terminated successfully"
-            if self.minuit.accurate:
+            if minuit.accurate:
                 message += "."
             else:
                 message += ", but uncertainties are unrealiable."
         else:
             message = "Optimization failed."
-            fmin = self.minuit.fmin
+            fmin = minuit.fmin
             if fmin is not None:
                 if fmin.has_reached_call_limit:
                     message += " Call limit was reached."
@@ -323,27 +273,54 @@ class MinuitMinimizer(AbstractMinimizer):
 
         return message
 
-    def minimize(self) -> Tuple[Any, Dict[str, Any], Array]:
+    def minimize(
+        self,
+        obs: Dict,
+        dataset: Dict,
+        fixed_pars: Optional[Dict[str, float]] = None,
+    ) -> Tuple[Any, Dict[str, Any], Array]:
+        if fixed_pars is None:
+            fixed_pars = {}
+
+        wrapped_lh = WrappedLLH(self.llh, obs, dataset, fixed_pars)
+
+        func = wrap_func_np_cache(backend.compile(wrapped_lh))
+        grad = wrap_func_np_cache(backend.compile(backend.grad(wrapped_lh)))
+
+        names = [par_name for par_name in self.parameters if par_name not in fixed_pars]
+
+        seeds = self.make_seeds(fixed_pars)
+
+        minuit = iminuit.Minuit(func, seeds, grad=grad, name=names)  # type: ignore
+        bounds = self.make_bounds(fixed_pars)
+
+        bound_list = [[lb, ub] for lb, ub in zip(bounds.lb, bounds.ub)]
+        minuit.errordef = minuit.LIKELIHOOD
+        minuit.limits = bound_list
+        minuit.strategy = 1
+        minuit.tol = 1e-2
+        minuit.print_level = 0
+
         if self.simplex_prefit:
-            self.minuit.simplex().migrad()
+            minuit.simplex().migrad()
         else:
-            self.minuit.migrad()
+            minuit.migrad()
 
         minimizer_info = {
-            "success": self.minuit.valid,
-            "message": self._build_message(),
-            "nfev": self.minuit.nfcn,
-            "njev": self.minuit.ngrad,
-            "hess_inv": self.minuit.covariance,
+            "success": minuit.valid,
+            "message": self._build_message(minuit),
+            "nfev": minuit.nfcn,
+            "njev": minuit.ngrad,
+            "hess_inv": minuit.covariance,
         }
 
         res_dict = restructure_args(
-            self.minuit.values,
+            minuit.values,
             self.parameters,
-            self.fixed_pars,
+            fixed_pars,
         )
 
-        fun = backend.array(cast(float, self.minuit.fval))
+        fun = backend.array(cast(float, minuit.fval))
         print("best-fit llh: ", fun)
         print("----------------")
         print("best-fit parameters:")

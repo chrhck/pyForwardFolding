@@ -22,7 +22,7 @@ class Backend(Protocol):
     def __init__(self, rng_seed: int = 0):
         """
         Initialize the backend with an optional random seed.
-        
+
         Args:
             rng_seed (int): Random seed for reproducibility.
         """
@@ -238,11 +238,10 @@ class Backend(Protocol):
         """
         ...
 
-
     def quantile(self, x: Array, q: Array) -> Array:
         """
         Compute the quantile of an array.
-        
+
         Args:
             x (Array): Input array.
             q (float): Quantile to compute (0 <= q <= 1).
@@ -261,7 +260,7 @@ class Backend(Protocol):
     def poiss_rng(self, lam: Array) -> Array:
         """
         Generate random numbers from a Poisson distribution.
-        
+
         Args:
             lam (Array): The rate parameter (lambda) of the Poisson distribution.
 
@@ -270,10 +269,10 @@ class Backend(Protocol):
         """
         ...
 
-    def chi2_logsf(self, x:ArrayLike, df: int) -> Array:
+    def chi2_logsf(self, x: ArrayLike, df: int) -> Array:
         """
         Compute the log survival function of the chi-squared distribution.
-        
+
         Args:
             x (Array): The value at which to evaluate the log survival function.
             df (int): Degrees of freedom of the chi-squared distribution.
@@ -286,7 +285,7 @@ class Backend(Protocol):
     def norm_ppf(self, p: ArrayLike) -> Array:
         """
         Compute the percent point function (inverse CDF) of the normal distribution.
-        
+
         Args:
             p (float): The probability value for which to compute the PPF.
 
@@ -298,7 +297,7 @@ class Backend(Protocol):
     def norm_sf(self, x: ArrayLike) -> Array:
         """
         Compute the survival function (1 - CDF) of the normal distribution.
-        
+
         Args:
             x (ArrayLike): The value at which to evaluate the survival function.
 
@@ -307,11 +306,10 @@ class Backend(Protocol):
         """
         ...
 
-
     def median(self, x: ArrayLike) -> Array:
         """
         Compute the median of an array.
-        
+
         Args:
             x (ArrayLike): Input array.
 
@@ -319,7 +317,31 @@ class Backend(Protocol):
             Array: The median value.
         """
         ...
-       
+
+    def mean(self, x: ArrayLike) -> Array:
+        """
+        Compute the mean of an array.
+
+        Args:
+            x (ArrayLike): Input array.
+
+        Returns:
+            Array: The mean value.
+        """
+        ...
+
+    def max(self, x: ArrayLike) -> Array:
+        """
+        Compute the maximum value of an array.
+
+        Args:
+            x (ArrayLike): Input array.
+
+        Returns:
+            Array: The maximum value.
+        """
+        ...
+
 
 class JAXBackend:
     """
@@ -333,7 +355,7 @@ class JAXBackend:
     def __init__(self, rng_seed: int = 0):
         """
         Initialize the JAX backend with an optional random seed.
-        
+
         Args:
             rng_seed (int): Random seed for reproducibility.
         """
@@ -534,11 +556,11 @@ class JAXBackend:
 
     def weighted_median(self, x: ArrayLike, weights: ArrayLike) -> JAXArray:
         return self.weighted_quantile(x, weights, 0.5)
-    
+
     def quantile(self, x: ArrayLike, q: ArrayLike) -> JAXArray:
         """
         Compute the quantile of an array.
-        
+
         Args:
             x (ArrayLike): Input array.
             q (float): Quantile to compute (0 <= q <= 1).
@@ -563,22 +585,25 @@ class JAXBackend:
         x = jnp.asarray(x)
         return jnp.asarray(jax.nn.sigmoid(x))
 
-
-    def repeat(self, x: ArrayLike, repeats, axis=None, total_repeat_length=None) -> JAXArray:
+    def repeat(
+        self, x: ArrayLike, repeats, axis=None, total_repeat_length=None
+    ) -> JAXArray:
         """
         Repeat elements of an array.
         """
         x = jnp.asarray(x)
-        return jnp.repeat(x, repeats, axis=axis, total_repeat_length=total_repeat_length)
+        return jnp.repeat(
+            x, repeats, axis=axis, total_repeat_length=total_repeat_length
+        )
 
     def poiss_rng(self, lam: ArrayLike) -> JAXArray:
         """
         Generate random numbers from a Poisson distribution.
-        
+
         Args:
             lam (ArrayLike): The rate parameter (lambda) of the Poisson distribution.
             seed (int): Random seed for reproducibility.
-        
+
         Returns:
             JAXArray: Random numbers drawn from the Poisson distribution.
         """
@@ -586,11 +611,11 @@ class JAXBackend:
         self.rng_key = new_key
         lam = jnp.asarray(lam)
         return jax.random.poisson(key, jnp.asarray(lam))
-    
+
     def chi2_logsf(self, x: ArrayLike, df: int) -> JAXArray:
         """
         Compute the log survival function of the chi-squared distribution.
-        
+
         Args:
             x (ArrayLike): The value at which to evaluate the log survival function.
             df (int): Degrees of freedom of the chi-squared distribution.
@@ -600,11 +625,11 @@ class JAXBackend:
         """
         x = jnp.asarray(x)
         return jax.scipy.stats.chi2.logsf(x, df)
-    
+
     def norm_ppf(self, p: ArrayLike) -> JAXArray:
         """
         Compute the percent point function (inverse CDF) of the normal distribution.
-        
+
         Args:
             p (ArrayLike): The probability value for which to compute the PPF.
 
@@ -613,12 +638,11 @@ class JAXBackend:
         """
         p = jnp.asarray(p)
         return jax.scipy.stats.norm.ppf(p)
-    
 
     def norm_sf(self, x: ArrayLike) -> JAXArray:
         """
         Compute the survival function (1 - CDF) of the normal distribution.
-        
+
         Args:
             x (ArrayLike): The value at which to evaluate the survival function.
 
@@ -631,7 +655,7 @@ class JAXBackend:
     def median(self, x: ArrayLike) -> JAXArray:
         """
         Compute the median of an array.
-        
+
         Args:
             x (ArrayLike): Input array.
 
@@ -640,6 +664,33 @@ class JAXBackend:
         """
         x = jnp.asarray(x)
         return jnp.median(x)
+
+    def mean(self, x: ArrayLike) -> JAXArray:
+        """
+        Compute the mean of an array.
+
+        Args:
+            x (ArrayLike): Input array.
+
+        Returns:
+            JAXArray: The mean value.
+        """
+        x = jnp.asarray(x)
+        return jnp.mean(x)
+
+    def max(self, x: ArrayLike) -> JAXArray:
+        """
+        Compute the maximum value of an array.
+
+        Args:
+            x (ArrayLike): Input array.
+
+        Returns:
+            JAXArray: The maximum value.
+        """
+        x = jnp.asarray(x)
+        return jnp.max(x)
+
 
 # Type aliases for convenience
 JAXBackendType = Backend

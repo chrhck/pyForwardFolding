@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -6,13 +6,108 @@ from .analysis import Analysis
 from .backend import Array, backend
 
 
+class AbstractPrior:
+    def __init__(
+        self,
+        prior_seeds: Dict[str, float],
+        prior_bounds: Optional[Dict[str, Tuple[float, float]]] = None,
+    ):
+        """
+        Abstract base class for priors used in likelihood evaluations.
+
+        Args:
+            prior_seeds (Dict[str, float]): Initial values for the parameters.
+            prior_bounds (Optional[Dict[str, Tuple[float, float]]]): Optional bounds for the parameters.
+        """
+        self.prior_seeds = prior_seeds
+
+        if prior_bounds is None:
+            prior_bounds = {par: (-np.inf, np.inf) for par in prior_seeds.keys()}
+        self.prior_bounds = prior_bounds
+
+    def log_pdf(self, parameter_values: Dict[str, float]) -> float:
+        raise NotImplementedError
+
+    @property
+    def prior_variables(self) -> Set[str]:
+        """
+        Get the set of prior variables.
+
+        Returns:
+            Set[str]: A set of all prior variable names.
+        """
+        return set(self.prior_seeds.keys())
+
+
+class GaussianUnivariatePrior(AbstractPrior):
+    def __init__(
+        self,
+        prior_params: Dict[str, Tuple[float, float]],
+        prior_seeds: Dict[str, float],
+        prior_bounds: Optional[Dict[str, Tuple[float, float]]] = None,
+    ):
+        """
+        A univariate Gaussian prior for parameters.
+
+        Note, this prior is not normalized, it only provides a log likelihood contribution.
+
+        Args:
+            prior_params (Dict[str, Tuple[float, float]]): Dictionary mapping parameter names to (mean, std) tuples.
+            prior_seeds (Dict[str, float]): Initial values for the parameters.
+            prior_bounds (Optional[Dict[str, Tuple[float, float]]]): Optional bounds for the parameters.
+        """
+        super().__init__(prior_seeds, prior_bounds)
+        self.prior_params = prior_params
+
+    def log_pdf(self, parameter_values):
+        llh = 0
+        for par, (mean, std) in self.prior_params.items():
+            llh += -((parameter_values[par] - mean) ** 2) / (2 * std**2)
+        return llh
+
+
+class UniformPrior(AbstractPrior):
+    def __init__(
+        self,
+        prior_seeds: Dict[str, float],
+        prior_bounds: Dict[str, Tuple[float, float]],
+    ):
+        """
+        A uniform prior for parameters.
+
+        Note, this is essentially a dummy prior. No bounds checkinf is performed.
+
+        Args:
+            prior_seeds (Dict[str, float]): Initial values for the parameters.
+            prior_bounds (Optional[Dict[str, Tuple[float, float]]]): Bounds for the parameters.
+        """
+        super().__init__(prior_seeds, prior_bounds)
+
+    def log_pdf(self, parameter_values):
+        return 0.0
+
+
+T = TypeVar("T", bound=AbstractPrior)
+
+
 class AbstractLikelihood:
     """
     Abstract base class representing a likelihood function to be evaluated against observed data.
     """
 
-    def __init__(self, analysis: Analysis):
+    def __init__(self, analysis: Analysis, priors: List[T]):
+        # Check that priors are set for all exposed parameters
+        exposed = analysis.exposed_parameters
+
+        prior_variables = set()
+        for prior in priors:
+            prior_variables.update(prior.prior_variables)
+
+        if exposed != prior_variables:
+            raise ValueError("Mismatch between exposed parameters and prior variables.")
+
         self.analysis = analysis
+        self.priors = priors
 
     def get_analysis(self) -> Analysis:
         """
@@ -32,6 +127,30 @@ class AbstractLikelihood:
     ) -> Array:
         raise NotImplementedError
 
+    def get_seeds(self) -> Dict[str, float]:
+        """
+        Get the seeds for the parameters defined by the priors.
+
+        Returns:
+            Dict[str, float]: A dictionary mapping parameter names to their initial values.
+        """
+        seeds = {}
+        for prior in self.priors:
+            seeds.update(prior.prior_seeds)
+        return seeds
+    
+    def get_bounds(self) -> Dict[str, Tuple[float, float]]:
+        """
+        Get the bounds for the parameters defined by the priors.
+
+        Returns:
+            Dict[str, Tuple[float, float]]: A dictionary mapping parameter names to their bounds.
+        """
+        bounds = {}
+        for prior in self.priors:
+            bounds.update(prior.prior_bounds)
+        return bounds
+
 
 class PoissonLikelihood(AbstractLikelihood):
     """
@@ -41,8 +160,8 @@ class PoissonLikelihood(AbstractLikelihood):
         analysis (Analysis): The analysis to evaluate against observed data.
     """
 
-    def __init__(self, analysis: Analysis):
-        super().__init__(analysis)
+    def __init__(self, analysis: Analysis, priors: List[T]):
+        super().__init__(analysis, priors)
 
     def llh(
         self,
@@ -97,22 +216,9 @@ class PoissonLikelihood(AbstractLikelihood):
             elif empty_bins == "throw":
                 if not np.all(non_empty_expectation):
                     raise ValueError(f"Empty bins in component '{comp_name}'")
-        return llh
 
-
-class AbstractPrior:
-    def log_pdf(self, parameter_values: Dict[str, float]) -> float:
-        raise NotImplementedError
-
-
-class GaussianUnivariatePrior(AbstractPrior):
-    def __init__(self, prior_params: Dict[str, Tuple[float, float]]):
-        self.prior_params = prior_params
-
-    def log_pdf(self, parameter_values):
-        llh = 0
-        for par, (mean, std) in self.prior_params.items():
-            llh += -(parameter_values[par] - mean) ** 2 / (2*std**2)
+        for p in self.priors:
+            llh += p.log_pdf(parameter_values)
         return llh
 
 
@@ -123,8 +229,8 @@ class SAYLikelihood(AbstractLikelihood):
     https://doi.org/10.48550/arXiv.1901.04645
     """
 
-    def __init__(self, analysis: Analysis):
-        self.analysis = analysis
+    def __init__(self, analysis: Analysis, priors: List[T]):
+        super().__init__(analysis, priors)
 
     def llh(
         self,
@@ -153,10 +259,10 @@ class SAYLikelihood(AbstractLikelihood):
             comp_ssq = backend.clip(comp_ssq, 0, comp_eval**2)
 
             sanitized_ssq = backend.select(comp_ssq > 0, comp_ssq, 1e-8)
-            sanizized_mu = backend.select(non_empty_expectation, comp_eval, 1e-8)
+            sanitized = backend.select(non_empty_expectation, comp_eval, 1e-8)
 
-            alpha = sanizized_mu**2 / sanitized_ssq + 1.0
-            beta = sanizized_mu / sanitized_ssq
+            alpha = sanitized**2 / sanitized_ssq + 1.0
+            beta = sanitized / sanitized_ssq
 
             llh_eff = (
                 alpha * backend.log(beta)
@@ -167,9 +273,7 @@ class SAYLikelihood(AbstractLikelihood):
             )
 
             llh_poisson = (
-                -sanizized_mu
-                + obs * backend.log(sanizized_mu)
-                - backend.gammaln(obs + 1)
+                -sanitized + obs * backend.log(sanitized) - backend.gammaln(obs + 1)
             )
 
             llh = backend.where(sanitized_ssq > 0, llh_eff, llh_poisson)
@@ -177,4 +281,7 @@ class SAYLikelihood(AbstractLikelihood):
             llh_sum = backend.where_sum(non_empty_expectation, llh, 0)
 
             total_llh += llh_sum
+
+        for p in self.priors:
+            total_llh += p.log_pdf(parameter_values)
         return total_llh
