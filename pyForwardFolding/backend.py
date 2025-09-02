@@ -129,6 +129,12 @@ class Backend(Protocol):
         Computes the natural logarithm of x.
         """
         ...
+    
+    def log10(self, x: Any) -> Array:
+        """
+        Computes the base-10 logarithm of x.
+        """
+        ...
 
     def diff(self, x: Any) -> Array:
         """
@@ -211,6 +217,24 @@ class Backend(Protocol):
     def logspace(self, start: float, stop: float, num: int) -> Array:
         """
         Return numbers spaced evenly on a log scale.
+        """
+        ...
+
+    def sin(self, x: Array) -> Array:
+        """
+        Trigonometric sine, element-wise.
+        """
+        ...
+
+    def cos(self, x: Array) -> Array:
+        """
+        Trigonometric cosine, element-wise.
+        """
+        ...
+
+    def arcsin(self, x: Array) -> Array:
+        """
+        Trigonometric inverse sine, element-wise.
         """
         ...
 
@@ -483,6 +507,10 @@ class JAXBackend:
         x = jnp.asarray(x)
         return jnp.log(x)
 
+    def log10(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        return jnp.log10(x)
+
     def diff(self, x: ArrayLike, axis: int = 0) -> JAXArray:
         x = jnp.asarray(x)
         return jnp.diff(x, axis=axis)
@@ -521,6 +549,18 @@ class JAXBackend:
 
     def logspace(self, start: float, stop: float, num: int) -> JAXArray:
         return jnp.logspace(start, stop, num)
+
+    def sin(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        return jnp.sin(x)
+
+    def cos(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        return jnp.cos(x)
+
+    def arcsin(self, x: ArrayLike) -> JAXArray:
+        x = jnp.asarray(x)
+        return jnp.arcsin(x)
 
     def arccos(self, x: ArrayLike) -> JAXArray:
         x = jnp.asarray(x)
