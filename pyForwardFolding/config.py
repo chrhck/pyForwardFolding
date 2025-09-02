@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from typing import Dict
 
 import yaml
+import os
 
 from .analysis import Analysis
 from .binned_expectation import BinnedExpectation
@@ -8,6 +11,8 @@ from .binning import AbstractBinning
 from .factor import AbstractBinnedFactor, AbstractUnbinnedFactor
 from .model import Model
 from .model_component import ModelComponent
+
+from .backend import backend
 
 
 def _load_config(path: str) -> Dict:
@@ -109,3 +114,79 @@ def models_from_config(path: str) -> Dict[str, Dict[str, Model]]:
             output[hist["name"]][model[0]] = models[model[0]]
 
     return output
+
+def load_dataframe(path: str) -> pd.DataFrame:
+    """
+    Loads a Pandas DataFrame from a given file path.
+    Automatically detects the file format based on its extension.
+
+    Supported formats: CSV, Parquet, Feather, HDF5, Excel, Pickle.
+
+    Args:
+        path (str): Path to the data file.
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file extension is unsupported.
+    """
+    import pandas as pd
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Data file not found: {path}")
+
+    ext = os.path.splitext(path)[-1].lower()
+
+    if ext in [".csv", ".txt"]:
+        return pd.read_csv(path)
+    elif ext in [".parquet"]:
+        return pd.read_parquet(path)
+    elif ext in [".feather", ".ft"]:
+        return pd.read_feather(path)
+    elif ext in [".h5", ".hdf", ".hdf5"]:
+        return pd.read_hdf(path)
+    elif ext in [".xlsx", ".xls"]:
+        return pd.read_excel(path)
+    elif ext in [".pkl", ".pickle"]:
+        return pd.read_pickle(path)
+    else:
+        raise ValueError(
+            f"Unsupported file extension '{ext}' for file: {path}. "
+            "Supported formats: CSV, Parquet, Feather, HDF5, Excel, Pickle."
+        )
+
+def dataset_from_config(path: str) -> Dict[str, Dict[str, float]]:
+    """
+    Creates a dataset from a yaml config.
+
+    Args:
+        path (str): Path to the YAML configuration file.
+
+    Returns:
+        dict: dataset to be used as analysis input.
+    """
+
+    conf = _load_config(path)
+    dataset = {}
+
+    for subconf in conf["datasets"]:
+        df = load_dataframe(subconf["path"])
+        subdataset = {}
+        for out_key, entry in subconf["param_mapping"].items():
+            in_key = entry["df_key"]
+            vals = df[in_key]
+            trafo = entry.get("transform")
+            if trafo:
+                vals = getattr(backend, trafo)(vals)
+            subdataset[out_key] = backend.asarray(vals)
+
+        if "median_energy" in subconf:
+            energies = subconf["median_energy"]["energy_key"]
+            weights = subconf["median_energy"]["weight"]
+            median_energy = backend.weighted_median(df[energies], df[weights])
+            subdataset["median_energy"] = backend.asarray([median_energy])
+        dataset[subconf["name"]] = subdataset
+    
+    return dataset
