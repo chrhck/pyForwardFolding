@@ -75,7 +75,7 @@ class Analysis:
             output_ssq_dict[comp_name] = hist_ssq
 
         return output_dict, output_ssq_dict
-    
+
     def fisher_information(
         self,
         datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
@@ -126,12 +126,13 @@ class Analysis:
         return jnp.sum(jnp.asarray([v for v in fisher_dict.values()]),axis=0)
 
     def covariance(
-        self,
-        datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
-        parameter_values: Dict[str, Union[np.ndarray, float]],
+            self,
+            datasets: Dict[str, Dict[str, Union[np.ndarray, float]]],
+            parameter_values: Dict[str, Union[np.ndarray, float]],
     ) -> jnp.ndarray:
         """
-        Compute the covariance matrix of the parameters by inverting the Fisher Information matrix.
+        Compute the covariance matrix from a Fisher Information Matrix directly calculated
+        from the dataset and parameter values. 
 
         This matrix represents the best-case lower bound on the covariance of any unbiased
         estimator of the parameters (the Cramér–Rao bound).
@@ -145,8 +146,8 @@ class Analysis:
         Returns:
             jnp.ndarray: The parameter covariance matrix (shape: [n_params, n_params]).
         """
-        fisher_information = self.fisher_information(datasets, parameter_values)
-        cov = jnp.linalg.inv(fisher_information)
+        fisher_information = self.fisher_information(datasets,parameter_values)
+        cov = self.covariance_from_fisherinformation(fisher_information)
         return cov
 
     def variance(
@@ -170,12 +171,51 @@ class Analysis:
             Dict[str, jnp.ndarray]: A dictionary mapping parameter names to their variances.
         """
         cov = self.covariance(datasets, parameter_values)
-        var = jnp.diag(cov)
+        var = self.variance_from_covariance(cov)
         keys = parameter_values.keys()
 
         return {
             k: v for k, v in zip(keys, var)
         }
+
+    @staticmethod
+    def covariance_from_fisherinformation(
+        fisher_information: jnp.ndarray
+    ) -> jnp.ndarray:
+        """
+        Compute the covariance matrix of the parameters by inverting the Fisher Information matrix.
+
+        This matrix represents the best-case lower bound on the covariance of any unbiased
+        estimator of the parameters (the Cramér–Rao bound).
+
+        Args:
+            fisher_information (jnp.ndarray): The Fisher Information matrix
+
+        Returns:
+            jnp.ndarray: The parameter covariance matrix (shape: [n_params, n_params]).
+        """
+        cov = jnp.linalg.inv(fisher_information)
+        return cov
+
+    @staticmethod
+    def variance_from_covariance(
+        cov: jnp.ndarray
+    ) -> jnp.ndarray:
+        """
+        Extract the variances (diagonal elements) from the parameter covariance matrix.
+
+        Each variance corresponds to the square of the minimal achievable standard deviation
+        of an unbiased estimator for that parameter.
+
+        Args:
+            cov (jnp.ndarray): The covariance matrix
+
+        Returns:
+            jnp.ndarray: The variances for each parameters (shape: [n_params]).
+        """
+        var = jnp.diag(cov)
+        return var
+    
 
     def __repr__(self):
         """
