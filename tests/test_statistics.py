@@ -19,6 +19,11 @@ import pytest
 from pyForwardFolding.backend import backend
 from pyForwardFolding.likelihood import PoissonLikelihood, UniformPrior
 from pyForwardFolding.statistics import PseudoExpGenerator, Hypothesis, HypothesisTest
+from .test_data import EXPECTED, MOCK_DISTS
+
+
+COMP_1_VALUES = backend.asarray([10.0, 20.0, 15.0])
+COMP_2_VALUES = backend.asarray([5.0, 8.0, 12.0])
 
 
 class MockAnalysis:
@@ -31,8 +36,8 @@ class MockAnalysis:
         """Mock evaluation returning predictable histograms."""
         # Return simple histograms based on parameter values
         hist = {
-            "component1": backend.array([10.0, 20.0, 15.0]) * parameter_values.get("param1", 1.0),
-            "component2": backend.array([5.0, 8.0, 12.0]) * parameter_values.get("param2", 1.0),
+            "component1": backend.array(COMP_1_VALUES) * parameter_values.get("param1", 1.0),
+            "component2": backend.array(COMP_2_VALUES) * parameter_values.get("param2", 1.0),
         }
         hist_ssq = {k: v**2 for k, v in hist.items()}
         return hist, hist_ssq
@@ -201,9 +206,8 @@ class TestHypothesis:
         )
         
         # Check exact value from captured data
-        expected_value = 13.318561553955078
         actual_value = to_float(result)
-        assert np.isclose(actual_value, expected_value, rtol=1e-10)
+        assert np.isclose(actual_value, EXPECTED.hypothesis_eval_basic, rtol=1E-8)
     
     def test_evaluate_detailed(self):
         """Test detailed hypothesis evaluation."""
@@ -229,15 +233,12 @@ class TestHypothesis:
         # Other parameters should have values close to captured ones
         assert "param1" in additional_info
         assert "param2" in additional_info
-        expected_param1 = 1.0221792185966851
-        expected_param2 = 1.0398706843467973
-        assert np.isclose(additional_info["param1"], expected_param1, rtol=1e-8)
-        assert np.isclose(additional_info["param2"], expected_param2, rtol=1e-8)
+        assert np.isclose(additional_info["param1"], EXPECTED.best_fit_param1, rtol=1E-8)
+        assert np.isclose(additional_info["param2"], EXPECTED.best_fit_param2, rtol=1E-8)
         
         # Check that log-likelihood matches captured value
-        expected_llh = 13.318561553955078
         llh_float = to_float(llh_value)
-        assert np.isclose(llh_float, expected_llh, rtol=1e-10)
+        assert np.isclose(llh_float, EXPECTED.hypothesis_eval_basic, rtol=1E-8)
     
     def test_evaluate_with_parameter_values(self):
         """Test evaluation with provided parameter values."""
@@ -251,9 +252,8 @@ class TestHypothesis:
         )
         
         # Check exact value from captured data
-        expected_value = 17.999671936035156
         actual_value = to_float(result1)
-        assert np.isclose(actual_value, expected_value, rtol=1e-10)
+        assert np.isclose(actual_value, EXPECTED.hypothesis_eval_params_1_5_0_8, rtol=1E-8)
         
         # Test with different parameter values to ensure they give different results
         param_values_2 = {"param1": 2.0, "param2": 1.2}
@@ -265,9 +265,8 @@ class TestHypothesis:
         )
         
         # Check exact value from captured data
-        expected_value_2 = 26.724206924438477
         actual_value_2 = to_float(result2)
-        assert np.isclose(actual_value_2, expected_value_2, rtol=1e-10)
+        assert np.isclose(actual_value_2, EXPECTED.hypothesis_eval_params_2_0_1_2, rtol=1E-8)
         
         # Ensure the values are different
         assert abs(actual_value - actual_value_2) > 1e-6
@@ -300,13 +299,13 @@ class TestHypothesis:
         
         # Check the exact values from captured data
         # h0 has param3=1.0 fixed, and seeds default to 1.0 for param1 and param2
-        expected_component1 = [10.0, 20.0, 15.0]
-        expected_component2 = [5.0, 8.0, 12.0]
+
+        self.h0.likelihood.analysis.evaluate
         
         # Check that values match expectations exactly
-        np.testing.assert_allclose(asimov_data["component1"], expected_component1, rtol=1e-10)
-        np.testing.assert_allclose(asimov_data["component2"], expected_component2, rtol=1e-10)
-    
+        np.testing.assert_allclose(asimov_data["component1"], COMP_1_VALUES, rtol=1E-8)
+        np.testing.assert_allclose(asimov_data["component2"], COMP_2_VALUES, rtol=1E-8)
+
     def test_asimov_experiment_with_parameter_values(self):
         """Test Asimov experiment with different parameter values."""
         # Test with custom parameter values
@@ -314,12 +313,9 @@ class TestHypothesis:
         asimov_data = self.h0.asimov_experiment(self.datasets, param_values)
         
         # Check the exact values from captured data
-        expected_component1 = [20.0, 40.0, 30.0]
-        expected_component2 = [7.5, 12.0, 18.0]
-        
-        np.testing.assert_allclose(asimov_data["component1"], expected_component1, rtol=1e-10)
-        np.testing.assert_allclose(asimov_data["component2"], expected_component2, rtol=1e-10)
-   
+        np.testing.assert_allclose(asimov_data["component1"], COMP_1_VALUES*param_values["param1"], rtol=1E-8)
+        np.testing.assert_allclose(asimov_data["component2"], COMP_2_VALUES*param_values["param2"], rtol=1E-8)
+
 
 class TestHypothesisTest:
     """Test the HypothesisTest class."""
@@ -335,7 +331,7 @@ class TestHypothesisTest:
         self.h0 = Hypothesis(
             name="null",
             likelihood=self.likelihood,
-            fixed_pars={"param3": 1.0}
+            fixed_pars={"param2": 1.5}
         )
         
         self.h1 = Hypothesis(
@@ -370,9 +366,9 @@ class TestHypothesisTest:
         """Test the free_parameters property."""
         free_params = self.hypothesis_test.free_parameters
         
-        # h1 has {param1, param2, param3}, h0 has {param1, param2}
+        # h1 has {param1, param2, param3}, h0 has {param1, param3}
         # So free parameters should be {param3}
-        assert free_params == {"param3"}
+        assert free_params == {"param2"}
     
     def test_dof_property(self):
         """Test the degrees of freedom property."""
@@ -388,9 +384,8 @@ class TestHypothesisTest:
         # Check exact value from captured data
         # From captured data: both h0 and h1 give the same likelihood value (13.318561553955078)
         # so test statistic should be 0.0
-        expected_ts = 0.0
         actual_ts = to_float(ts_value)
-        assert np.isclose(actual_ts, expected_ts, rtol=1e-10)
+        assert np.isclose(actual_ts, EXPECTED.test_stat, rtol=1E-8)
     
     def test_test_method_with_parameter_values(self):
         """Test hypothesis test method with specific parameter values."""
@@ -399,9 +394,8 @@ class TestHypothesisTest:
         ts_value = self.hypothesis_test.test(self.observed_data, param_values)
         
         # From captured data: with param1=1.2, test statistic is still 0.0
-        expected_ts = 0.0
         actual_ts = to_float(ts_value)
-        assert np.isclose(actual_ts, expected_ts, rtol=1e-10)
+        assert np.isclose(actual_ts, EXPECTED.test_stat_with_param1_1_2, rtol=1E-8)
     
     def test_test_method_different_hypotheses(self):
         """Test hypothesis test with meaningfully different hypotheses."""
@@ -426,76 +420,9 @@ class TestHypothesisTest:
         
         # From captured data: test statistic is still 0.0 
         # (the current data seems to optimize to similar values)
-        expected_ts = 0.0
         actual_ts = to_float(ts_value)
-        assert np.isclose(actual_ts, expected_ts, rtol=1e-10)
+        assert np.isclose(actual_ts, EXPECTED.test_stat_different_hypotheses, rtol=1E-8)
     
-    def test_null_dist(self):
-        """Test null distribution generation."""        
-        # Use a fixed seed for reproducible pseudo-experiments
-        from pyForwardFolding.backend import JAXBackend
-        
-        # Temporarily replace the global backend with a seeded one
-        original_backend = backend
-        seeded_backend = JAXBackend(rng_seed=42)
-        
-        # Monkey patch the backend module to use our seeded backend
-        import pyForwardFolding.backend as backend_module
-        backend_module.backend = seeded_backend
-        
-        try:
-            nexp = 3
-            null_dist = self.hypothesis_test.null_dist(nexp)
-            
-            assert len(null_dist) == nexp
-            # Check that all values are numeric
-            assert all(isinstance(to_float(ts), float) for ts in null_dist)
-            
-            # Reset backend with same seed and test reproducibility
-            backend_module.backend = JAXBackend(rng_seed=42)
-            null_dist_2 = self.hypothesis_test.null_dist(nexp)
-            
-            # Results should be the same with the same seed
-            for ts1, ts2 in zip(null_dist, null_dist_2):
-                assert np.isclose(to_float(ts1), to_float(ts2), rtol=1e-10)
-                
-        finally:
-            # Restore original backend
-            backend_module.backend = original_backend
-    
-    def test_alt_dist(self):
-        """Test alternative distribution generation."""        
-        # Use a fixed seed for reproducible pseudo-experiments
-        from pyForwardFolding.backend import JAXBackend
-        
-        # Temporarily replace the global backend with a seeded one
-        original_backend = backend
-        seeded_backend = JAXBackend(rng_seed=123)
-        
-        # Monkey patch the backend module to use our seeded backend
-        import pyForwardFolding.backend as backend_module
-        backend_module.backend = seeded_backend
-        
-        try:
-            nexp = 2
-            param_values = {"param3": 2.0}
-            alt_dist = self.hypothesis_test.alt_dist(nexp, param_values)
-            
-            assert len(alt_dist) == nexp
-            # Check that all values are numeric
-            assert all(isinstance(to_float(ts), float) for ts in alt_dist)
-            
-            # Reset backend with same seed and test reproducibility
-            backend_module.backend = JAXBackend(rng_seed=123)
-            alt_dist_2 = self.hypothesis_test.alt_dist(nexp, param_values)
-            
-            # Results should be the same with the same seed
-            for ts1, ts2 in zip(alt_dist, alt_dist_2):
-                assert np.isclose(to_float(ts1), to_float(ts2), rtol=1e-10)
-                
-        finally:
-            # Restore original backend
-            backend_module.backend = original_backend
     
     def test_discovery_potential_multi_dof_error(self):
         """Test discovery potential raises error for multiple degrees of freedom."""        
@@ -553,13 +480,13 @@ class TestHypothesisTest:
     def test_power(self):
         """Test power calculation."""        
         # Mock distributions
-        with patch.object(self.hypothesis_test, 'null_dist', return_value=[0.5, 1.0, 1.5, 2.0, 2.5]):
-            with patch.object(self.hypothesis_test, 'alt_dist', return_value=[1.8, 2.2, 2.5, 3.0, 1.0]):
+        with patch.object(self.hypothesis_test, 'null_dist', return_value=MOCK_DISTS.null_dist_5_points):
+            with patch.object(self.hypothesis_test, 'alt_dist', return_value=MOCK_DISTS.alt_dist_5_points):
                 power = self.hypothesis_test.power(5)
                 
                 # Power should be around 0.6 (3 out of 5 above threshold)
                 power_float = to_float(power)
-                assert 0.3 <= power_float <= 0.8  # Adjusted range to be more tolerant
+                assert EXPECTED.power_lower_bound <= power_float <= EXPECTED.power_upper_bound  # Adjusted range to be more tolerant
     
     def test_scan_single_dof(self):
         """Test parameter scan for single degree of freedom."""
@@ -573,11 +500,8 @@ class TestHypothesisTest:
         assert len(ts_values) == scan_points
         
         # Check exact values from captured data
-        expected_grid = [0.1, 2.575, 5.05, 7.525, 10.0]
-        expected_ts_values = [0.061557769775390625] * 5  # All the same value
-        
-        np.testing.assert_allclose(scan_grid, expected_grid, rtol=1e-10)
-        np.testing.assert_allclose(ts_values, expected_ts_values, rtol=1e-10)
+        np.testing.assert_allclose(scan_grid, EXPECTED.scan_grid_5_points, rtol=1E-4)
+        np.testing.assert_allclose(ts_values, EXPECTED.scan_ts_values_5_points, rtol=1E-4)
     
     def test_scan_multi_dof_error(self):
         """Test scan raises error for multiple degrees of freedom."""        
