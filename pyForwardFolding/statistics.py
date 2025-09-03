@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import (
     Any,
     Dict,
@@ -109,10 +110,11 @@ class Hypothesis:
             float: The log-likelihood value for the hypothesis.
         """
 
-        all_fixed_pars = (
-            (self.seeds | parameter_values) if parameter_values else self.fixed_pars
-        )
+        all_fixed_pars = deepcopy(self.fixed_pars)
 
+        if parameter_values is not None:
+            all_fixed_pars.update(parameter_values)
+        
         res = self.minimizer.minimize(observed_data, dataset, all_fixed_pars)
 
         if detailed:
@@ -463,3 +465,28 @@ class HypothesisTest:
             ts_values.append(ts)
 
         return scan_grid, ts_values
+
+
+    def uncertainty(self, observed_data, sigma_level):
+        if self.dof != 1:
+            raise ValueError(
+                "Uncertainty calculation is only implemented for one degree of freedom"
+        )
+
+        free_param = list(self.free_parameters)[0]
+        param_bounds = self.h1.likelihood.get_bounds()[free_param]
+        h1_eval = self.h1.evaluate(observed_data, self.dataset, detailed=False)
+
+        delta_llh_thrsh = np.sqrt(sigma_level) # works only for 1 dof
+
+        def fopt(fp):
+            h0_eval = self.h0.evaluate(
+                observed_data, self.dataset, {free_param: fp}, detailed=False
+            )
+            ts = 2 * (cast(float, h0_eval) - cast(float, h1_eval))
+            return ts - delta_llh_thrsh
+
+        lower = cast(float, sopt.brentq(fopt, param_bounds[0], self.h1.seeds[free_param]))
+        upper = cast(float, sopt.brentq(fopt, self.h1.seeds[free_param], param_bounds[1]))
+
+        return (upper - lower) / 2
