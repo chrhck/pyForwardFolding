@@ -243,12 +243,15 @@ class MinuitMinimizer(AbstractMinimizer):
     def __init__(
         self,
         llh: AbstractLikelihood,
+        tol: float = 1e-2,
+        strategy: int = 1,
         simplex_prefit: bool = False,
     ):
         super().__init__(
             llh=llh,
         )
-
+        self.tol = tol
+        self.strategy = strategy
         self.simplex_prefit = simplex_prefit
 
     @staticmethod
@@ -297,8 +300,8 @@ class MinuitMinimizer(AbstractMinimizer):
         bound_list = [[lb, ub] for lb, ub in zip(bounds.lb, bounds.ub)]
         minuit.errordef = minuit.LIKELIHOOD
         minuit.limits = bound_list
-        minuit.strategy = 1
-        minuit.tol = 1e-2
+        minuit.strategy = self.strategy
+        minuit.tol = self.tol
         minuit.print_level = 0
 
         if self.simplex_prefit:
