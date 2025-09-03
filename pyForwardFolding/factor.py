@@ -308,10 +308,14 @@ class PowerLawFlux(AbstractUnbinnedFactor):
     """
     Factor that applies a power law flux model.
 
+    Parameters required by this factor are: `flux_norm` and `spectral_index`.
+    Variables required by this factor are: `true_energy`.
+
     Args:
         name (str): Identifier for the factor.
         pivot_energy (float): Reference energy for the power law.
         baseline_norm (float): Baseline normalization factor.
+        param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
     """
 
     def __init__(
@@ -361,8 +365,11 @@ class FluxNorm(AbstractUnbinnedFactor):
     """
     Factor that applies a simple flux normalization.
 
+    Parameters required by this factor are: `flux_norm`.
+    
     Args:
         name (str): Identifier for the factor.
+        param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
     """
 
     def __init__(self, name: str, param_mapping: Optional[Dict[str, str]] = None):
@@ -394,11 +401,15 @@ class SnowstormGauss(AbstractUnbinnedFactor):
     """
     Factor that implements a Gaussian reweighting scheme for systematic uncertainty modeling.
 
+    Parameters required by this factor are: `scale`.
+    Variables required by this factor are specified by `req_variable_name`.
+
     Args:
         name (str): Identifier for the factor.
         sys_gauss_width (float): Width of the Gaussian distribution.
         sys_sim_bounds (tuple): Bounds for the simulated parameter space (min, max).
         req_variable_name (str): Name of the required variable for reweighting.
+        param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
     """
 
     def __init__(
@@ -443,9 +454,13 @@ class DeltaGamma(AbstractUnbinnedFactor):
     """
     Factor that applies a delta gamma scaling.
 
+    Parameters required by this factor are: `delta_gamma`.
+    Variables required by this factor are: `true_energy` and `median_energy`.
+
     Args:
         name (str): Identifier for the factor.
         reference_energy (float): Reference energy for scaling.
+        param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
     """
 
     def __init__(
@@ -482,6 +497,9 @@ class DeltaGamma(AbstractUnbinnedFactor):
 class ModelInterpolator(AbstractUnbinnedFactor):
     """
     Interpolation between two models.
+
+    Parameters required by this factor are: `lambda_int`.
+    Variables required by this factor are: `baseline_weight` and `alternative_weight`.
 
     Args:
         name (str): Identifier for the factor.
@@ -548,6 +566,9 @@ class GradientReweight(AbstractUnbinnedFactor):
     Gradient reweight application. (e.g barr parameters)
     Requires precalculated gradients.
 
+    Parameters required by this factor are the keys of `gradient_key_mapping`.
+    Variables required by this factor are the values of `gradient_key_mapping` and `baseline_weight`.
+
     Args:
         name (str): Identifier for the factor.
         gradient_key_mapping (dict): Dictionary mapping exposed variable names to gradient variable names.
@@ -597,6 +618,9 @@ class VetoThreshold(AbstractUnbinnedFactor):
     """
     Changes the atm. passing fraction according to a second-order expansion of
     log10(splined_passing_fraction)
+
+    Parameters required by this factor are: `e_threshold`.
+    Variables required by this factor are the coefficients of the expansion.
     """
 
     def __init__(
@@ -668,7 +692,19 @@ class VetoThreshold(AbstractUnbinnedFactor):
 
 
 class SoftCut(AbstractUnbinnedFactor):
-    """Factor for a soft cut on a specific variable"""
+    """
+    Factor for a soft cut on a specific variable.
+
+    Parameters required by this factor are: `soft_cut`.
+    Variables required by this factor are specified by `cut_variable`.
+    
+    Args:
+        name (str): Identifier for the factor.
+        cut_variable (str): Name of the variable to apply the soft cut on.
+        slope (float): Slope of the sigmoid function defining the softness of the cut.
+        param_mapping (dict): Dictionary mapping factor parameter names to names in the parameter dictionary.
+
+    """
 
     def __init__(
         self,
@@ -714,6 +750,8 @@ class PerBinPolynomial(AbstractBinnedFactor):
     The polynomial coefficients are provided as a list of lists,
     where each inner list corresponds to a bin and contains the coefficients
     for the polynomial in that bin.
+
+    Parameters required by this factor are: `scale`.
 
     Args:
         name (str): Identifier for the factor.
