@@ -112,14 +112,8 @@ class Model:
                     f"Baseline weight '{baseline_weight}' not found in input variables"
                 )
 
-            # Initialize the component buffer with the baseline weight value
-            comp_eval = baseline_weight_value
-
-            # Evaluate the component
-            comp_eval *= component.evaluate(input_variables, parameter_values)
-
             # Accumulate the result into the output
-            output += comp_eval
+            output += baseline_weight_value * component.evaluate(input_variables, parameter_values)
 
         return output
 
@@ -155,14 +149,9 @@ class Model:
                     f"Baseline weight '{baseline_weight}' not found in input variables"
                 )
 
-            # Initialize the component buffer with the baseline weight value
-            comp_eval = baseline_weight_value
-
-            # Evaluate the component
-            comp_eval *= component.evaluate(input_variables, parameter_values)
-
+ 
             # Accumulate the result into the output
-            output[component.name] = comp_eval
+            output[component.name] = baseline_weight_value * component.evaluate(input_variables, parameter_values)
 
         return output
 
