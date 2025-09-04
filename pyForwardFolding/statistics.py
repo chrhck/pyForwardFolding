@@ -30,10 +30,15 @@ class PseudoExpGenerator:
         parameter_values: Dict[str, float],
     ):
         """
-        Initialize the PseudoExpGenerator with an analysis.
+        Generator for pseudo-experiments based on an analysis.
+
+        Uses the analysis to evaluate expected histograms and then generates
+        pseudo-experiments by drawing from a Poisson distribution.
 
         Args:
             analysis (Analysis): The analysis to generate pseudo-experiments for.
+            datasets (Dict[str, Dict[str, Union[Array, float]]]): The input datasets for the model evaluation.
+            parameter_values (Dict[str, float]): The parameter values for the analysis.
         """
         self.analysis = analysis
         self.exp_hists, _ = analysis.evaluate(datasets, parameter_values)
@@ -59,6 +64,15 @@ MT = TypeVar("MT", bound=AbstractMinimizer)
 class Hypothesis:
     """
     A class to represent a hypothesis for hypothesis testing.
+
+    Default parameter values are taking from the likelihood's seeds.
+    Fixed parameters can be provided to create a null hypothesis.
+    The minimizer can be customized by providing a different implementation of AbstractMinimizer.
+    Args:
+        name (str): The name of the hypothesis.
+        likelihood (AbstractLikelihood): The likelihood to evaluate the hypothesis.
+        fixed_pars (Optional[Dict[str, float]]): Parameters to be fixed in the hypothesis. Defaults to None.
+        minimizer (Optional[AbstractMinimizer]): The minimizer to use for fitting. Defaults to ScipyMinimizer.
     """
 
     def __init__(
@@ -167,6 +181,16 @@ class Hypothesis:
         dataset: Dict[str, Dict[str, Array | float]],
         parameter_values: Optional[Dict[str, float]] = None,
     ):
+        """
+        Generate the Asimov dataset for the hypothesis.
+
+        Args:
+            dataset (Dict[str, Dict[str, Array | float]]): The input datasets for the model evaluation.
+            parameter_values (Optional[Dict[str, float]]): The parameter values for the hypothesis. If not provided, the seeds will be used.
+        Returns:
+            Dict[str, Array]: The Asimov dataset.
+        """
+
         all_parameter_values = (
             self.seeds | self.fixed_pars if self.fixed_pars else self.seeds
         )
@@ -182,7 +206,16 @@ class Hypothesis:
 
 class HypothesisTest:
     """
-    A class to perform hypothesis testing using pseudo-experiments.
+    A class to perform hypothesis testing.
+
+    This class encapsulates two hypotheses (null and alternative) and provides methods
+    to perform hypothesis tests, generate null and alternative distributions, calculate
+    discovery potential, and compute power.
+
+    Args:
+        h0 (Hypothesis): The null hypothesis.
+        h1 (Hypothesis): The alternative hypothesis.
+        dataset (Dict[str, Dict[str, Array | float]]): The input datasets for the model evaluation.
     """
 
     def __init__(
@@ -201,6 +234,29 @@ class HypothesisTest:
         self.h0 = h0
         self.h1 = h1
         self.dataset = dataset
+
+    @classmethod
+    def from_likelihood(cls, likelihood: AbstractLikelihood, dataset: Dict[str, Dict[str, Array | float]], fixed_params: Dict[str, float]):
+        """
+        Create a HypothesisTest from a likelihood.
+
+        Args:
+            likelihood (AbstractLikelihood): The likelihood to create hypotheses from.
+            dataset (Dict[str, Dict[str, Array | float]]): The input datasets for the model evaluation.
+            fixed_params (Dict[str, float]): The parameters to be fixed in the null hypothesis.
+
+        Returns:
+            HypothesisTest: The constructed hypothesis test.
+        """
+        h0 = Hypothesis(
+            name="H0",
+            likelihood=likelihood,
+            fixed_pars=fixed_params,
+        )
+        h1 = Hypothesis(name="H1", likelihood=likelihood)
+
+        return cls(h0, h1, dataset)
+
 
     @property
     def free_parameters(self) -> Set[str]:
@@ -347,7 +403,7 @@ class HypothesisTest:
             """
             Generate pseudo-experiments and fit the alternative hypothesis to find the median.
             """
-            pexps = self.h1.generate_pseudo_experiments(nexp_alt, {free_param: x})
+            pexps = self.h1.generate_pseudo_experiments(nexp_alt, self.dataset, {free_param: x})
             alt_dist = backend.array([self.test(exp) for exp in pexps])
             return backend.median(alt_dist)
 
